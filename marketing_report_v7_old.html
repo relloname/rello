@@ -86,10 +86,38 @@
         .delta-up { color: #2e8b57; }
         .delta-down { color: #c0392b; }
         .delta-icon { margin-right: 6px; font-weight: 900; }
-
+        
         /* 순위 분석 스타일 */
         .rank-heatmap-table th, .rank-heatmap-table td { text-align: center; border: 1px solid #eee; padding: 8px; font-size: 11px; }
         .rank-heatmap-table th { background: #f8f9fa; font-weight: bold; }
+        
+        /* 드래그 앤 드롭 업로드 영역 */
+        .upload-dropzone { 
+            position: relative; border: 2px dashed #ddd; border-radius: 8px; padding: 30px; text-align: center; 
+            cursor: pointer; transition: all 0.3s; background: #fafafa; min-height: 150px; display: flex; 
+            flex-direction: column; align-items: center; justify-content: center; 
+        }
+        .upload-dropzone:hover { border-color: #007bff; background: #f0f7ff; }
+        .upload-dropzone.uploaded { border-color: #28a745; background: #f0fff4; }
+        .upload-icon { font-size: 48px; margin-bottom: 10px; }
+        .upload-label { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 5px; }
+        .upload-hint { font-size: 12px; color: #666; }
+        .upload-check { 
+            position: absolute; top: 10px; right: 10px; font-size: 32px; color: #28a745; 
+            opacity: 0; transition: opacity 0.3s; 
+        }
+        .upload-dropzone.uploaded .upload-check { opacity: 1; }
+        
+        /* TOP10 고정 테이블 */
+        .top10-container { 
+            position: sticky; top: 0; z-index: 100; background: white; padding: 15px 0; 
+            border-bottom: 2px solid #ddd; margin-bottom: 20px; 
+        }
+        .top10-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .top10-table { font-size: 11px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+        .top10-table th { background: #007bff; color: white; padding: 6px; text-align: center; font-size: 11px; }
+        .top10-table td { padding: 5px 6px; border-bottom: 1px solid #eee; text-align: left; }
+        .top10-table tr:last-child td { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -122,26 +150,44 @@
                 <span>📤 데이터 업로드</span>
             </div>
             <div class="info-box">
-                💡 4주간 Naver 광고 보고서 및 상품 데이터 파일을 업로드하세요.<br>
-                • 파일1 (RAW): 일별/주별, 시간대/요일 포함 (A~O 열) - CSV/XLSX<br>
-                • 파일2 (RAW2): 일별/주별, 검색어 포함 (A~O 열, 검색/콘텐츠 매체 포함) - CSV/XLSX<br>
-                • 파일3 (상품 CSV): 상품별 성과 데이터 - CSV<br>
-                • 파일4 (상품 TSV): 상품 정보 매핑 - TSV<br>
-                RAW 파일들은 2행부터 데이터가 시작됩니다.
+                💡 4주간 Naver 광고 보고서 파일들을 드래그&드롭 또는 클릭하여 업로드하세요.<br>
+                • RAW (일/주별): 시간대/요일 포함 (A~O 열) - CSV/XLSX<br>
+                • RAW2 (검색어): 검색어 포함 (A~O 열, 검색/콘텐츠 매체 포함) - CSV/XLSX<br>
+                • 소재 (상품 성과): 상품별 성과 데이터 - CSV<br>
+                • 상품 TSV: 상품 정보 매핑 파일 - TSV<br>
+                두 파일 모두 2행부터 데이터가 시작됩니다.
             </div>
-            <div class="controls">
-                <label>RAW (일/주별): <input type="file" id="fileInputRaw" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw')"></label>
-                <label>RAW2 (검색어): <input type="file" id="fileInputRaw2" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw2')"></label>
-                <label>상품 CSV: <input type="file" id="fileInputProduct" accept=".csv" onchange="handleUpload(event, 'product')"></label>
-                <label>상품 TSV: <input type="file" id="fileInputTSV" accept=".tsv" onchange="handleUpload(event, 'tsv')"></label>
-            </div>
-            <div id="uploadStatus" class="status"></div>
-            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 4px;">
-                <strong>📊 업로드된 데이터 통계 (요약):</strong>
-                <div id="uploadStats" style="margin-top: 15px; color: #666; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
-                    <div>아직 데이터가 없습니다.</div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px;">
+                <div class="upload-dropzone" id="dropzoneRaw" onclick="document.getElementById('fileInputRaw').click()">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-label">RAW (일/주별)</div>
+                    <div class="upload-hint">CSV/XLSX 파일</div>
+                    <div class="upload-check" id="checkRaw">✓</div>
+                    <input type="file" id="fileInputRaw" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw')" style="display: none;">
+                </div>
+                <div class="upload-dropzone" id="dropzoneRaw2" onclick="document.getElementById('fileInputRaw2').click()">
+                    <div class="upload-icon">🔍</div>
+                    <div class="upload-label">검색어 (RAW2)</div>
+                    <div class="upload-hint">CSV/XLSX 파일</div>
+                    <div class="upload-check" id="checkRaw2">✓</div>
+                    <input type="file" id="fileInputRaw2" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw2')" style="display: none;">
+                </div>
+                <div class="upload-dropzone" id="dropzoneProduct" onclick="document.getElementById('fileInputProduct').click()">
+                    <div class="upload-icon">🛍️</div>
+                    <div class="upload-label">소재 (상품 성과)</div>
+                    <div class="upload-hint">CSV 파일</div>
+                    <div class="upload-check" id="checkProduct">✓</div>
+                    <input type="file" id="fileInputProduct" accept=".csv" onchange="handleUpload(event, 'product')" style="display: none;">
+                </div>
+                <div class="upload-dropzone" id="dropzoneTSV" onclick="document.getElementById('fileInputTSV').click()">
+                    <div class="upload-icon">📋</div>
+                    <div class="upload-label">상품 TSV</div>
+                    <div class="upload-hint">TSV 파일</div>
+                    <div class="upload-check" id="checkTSV">✓</div>
+                    <input type="file" id="fileInputTSV" accept=".tsv" onchange="handleUpload(event, 'tsv')" style="display: none;">
                 </div>
             </div>
+            <div id="uploadStatus" class="status"></div>
         </div>
     </div>
 
@@ -192,6 +238,13 @@
             <div class="section-title">
                 <span>🏆 순위 분석</span>
             </div>
+            
+            <!-- TOP10 테이블 -->
+            <div class="top10-container">
+                <h3 style="margin-bottom: 12px; font-size: 16px;">🔝 검색어 TOP 10</h3>
+                <div class="top10-grid" id="top10Grid"></div>
+            </div>
+            
             <div class="rank-panel" style="margin-bottom:20px; background:#fff; border:1px solid #ddd; padding:20px; border-radius:8px;">
                 <h3>📉 검색어별 순위 추이 (최근 14일)</h3>
                 <div class="controls" style="margin-top:10px;">
@@ -380,31 +433,38 @@
                 <input class="text-col" type="text" id="productFilter" placeholder="상품명 검색" onkeyup="updateProductTable()">
                 <select id="productCampaignFilter" onchange="updateProductTable()"><option value="">캠페인 전체</option></select>
                 <select id="productAdgroupFilter" onchange="updateProductTable()"><option value="">광고그룹 전체</option></select>
+                <select id="productDeviceFilter" onchange="updateProductTable()"><option value="">전체 디바이스</option><option value="PC">PC</option><option value="모바일">모바일</option></select>
+                <input type="number" id="standardROAS_PROD" placeholder="ROAS 기준 %" min="0" step="10">
+                <button onclick="highlightLowROAS('productBody', 'standardROAS_PROD')">ROAS 적용</button>
+                <button class="filter-red" onclick="filterRedRows('productBody')">필터링</button>
+                <button class="roas-up" onclick="applyROASFilter('productBody', 'up', 'standardROAS_PROD')">↑</button>
+                <button class="roas-down" onclick="applyROASFilter('productBody', 'down', 'standardROAS_PROD')">↓</button>
                 <button class="danger" onclick="resetProduct()">초기화</button>
+                <button class="secondary" onclick="toggleChangeBadge('productTable')">증감율 On/Off</button>
             </div>
             <div class="table-wrapper">
                 <table id="productTable">
                     <thead>
                     <tr>
-                        <th>순위</th>
-                        <th>이미지</th>
-                        <th style="text-align:left;">상품명</th>
-                        <th>캠페인</th>
-                        <th>광고그룹</th>
-                        <th class="number">광고비</th>
-                        <th class="number">노출수</th>
-                        <th class="number">클릭수</th>
-                        <th class="number">클릭율</th>
-                        <th class="number">CPC</th>
-                        <th class="number">전환수</th>
-                        <th class="number">전환율</th>
-                        <th class="number">매출액</th>
-                        <th class="number">전환당비용</th>
-                        <th class="number">ROAS</th>
+                        <th onclick="sortTable('productTable', 0)">순위</th>
+                        <th onclick="sortTable('productTable', 1)">이미지</th>
+                        <th onclick="sortTable('productTable', 2)" style="text-align:left;">상품명</th>
+                        <th onclick="sortTable('productTable', 3)">캠페인</th>
+                        <th onclick="sortTable('productTable', 4)">광고그룹</th>
+                        <th onclick="sortTable('productTable', 5)" class="number">광고비</th>
+                        <th onclick="sortTable('productTable', 6)" class="number">노출수</th>
+                        <th onclick="sortTable('productTable', 7)" class="number">클릭수</th>
+                        <th onclick="sortTable('productTable', 8)" class="number">클릭율</th>
+                        <th onclick="sortTable('productTable', 9)" class="number">CPC</th>
+                        <th onclick="sortTable('productTable', 10)" class="number">전환수</th>
+                        <th onclick="sortTable('productTable', 11)" class="number">전환율</th>
+                        <th onclick="sortTable('productTable', 12)" class="number">매출액</th>
+                        <th onclick="sortTable('productTable', 13)" class="number">전환당비용</th>
+                        <th onclick="sortTable('productTable', 14)" class="number">ROAS</th>
                     </tr>
                     </thead>
                     <tbody id="productBody">
-                    <tr><td colspan="15" class="no-data">상품 데이터를 업로드해주세요.</td></tr>
+                    <tr><td colspan="15" class="no-data">데이터를 업로드해주세요.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -542,15 +602,15 @@
             </div>
             <div class="info-box">💡 필터 조건 충족 시, CPC 증감율에 따라 분류됩니다.</div>
             <div class="controls">
-                <input class="text-col compact-input" type="text" id="cpcBrandExclude" placeholder="제외키워드">
-                <select id="cpcCampaignTypeFilter" class="compact-input"><option value="">유형 전체</option></select>
-                <select id="cpcCampaignFilter" class="compact-input"><option value="">캠페인 전체</option></select>
-                <select id="cpcAdgroupFilter" class="compact-input"><option value="">광고그룹 전체</option></select>
-                <input type="number" id="cpcCostMin" class="compact-input" placeholder="광고비≥">
-                <input type="number" id="cpcConvMin" class="compact-input" placeholder="전환≥">
-                <input type="number" id="cpcROASMin" class="compact-input" placeholder="ROAS≥">
-                <input type="number" id="cpcCPAMin" class="compact-input" placeholder="CPA≤">
-                <input type="number" id="cpcChangeThreshold" class="compact-input" placeholder="CPC%">
+                <input class="text-col" type="text" id="cpcBrandExclude" placeholder="제외 키워드(콤마)">
+                <select id="cpcCampaignTypeFilter"><option value="">캠페인 유형 전체</option></select>
+                <select id="cpcCampaignFilter"><option value="">캠페인 전체</option></select>
+                <select id="cpcAdgroupFilter"><option value="">광고그룹 전체</option></select>
+                <input type="number" id="cpcCostMin" placeholder="최소 광고비">
+                <input type="number" id="cpcConvMin" placeholder="최소 전환수">
+                <input type="number" id="cpcROASMin" placeholder="최소 ROAS">
+                <input type="number" id="cpcCPAMax" placeholder="최대 전환당비용">
+                <input type="number" id="cpcChangeThreshold" placeholder="CPC 증감% 기준">
                 <button onclick="updateCPCAnalysis()">🔍 적용</button>
                 <button class="danger" onclick="resetCPC()">초기화</button>
                 <button class="secondary btn-compact" onclick="toggleChangeBadge('cpcUpTable'); toggleChangeBadge('cpcDownTable');">증감율 On/Off</button>
@@ -686,8 +746,6 @@
 /* ============ 데이터/상수 ============ */
 let rawRows = [];
 let raw2Rows = [];
-let productRows = [];
-let productMap = {};
 let weeks = [];
 let currentWeekData = [];
 let previousWeekData = [];
@@ -784,22 +842,36 @@ function clearROASFilter(bodyId) {
 function parseNumber(v){ if(v===undefined||v===null) return 0; return parseFloat(String(v).replace(/,/g,''))||0; }
 
 /* ============ 업로드/파싱 ============ */
+let productRows = [];
+let productMap = {};
+
 function handleUpload(ev, kind){
     const file=ev.target.files[0]; if(!file) return;
     const reader=new FileReader();
     reader.onload=e=>{
         try{
-            if(kind === 'product') {
-                parseProductCSV(e.target.result);
-                showStatus(`✅ 상품 CSV 로드 완료: ${productRows.length}행`,'success');
-            } else if(kind === 'tsv') {
-                parseTSV(e.target.result);
-                showStatus(`✅ 상품 TSV 로드 완료: ${Object.keys(productMap).length}개 상품`,'success');
+            if(kind === 'product' || kind === 'tsv') {
+                if(kind === 'product') parseProductCSV(e.target.result);
+                else parseTSV(e.target.result);
             } else {
                 if(file.name.endsWith('.csv')) parseCSV(e.target.result,kind);
                 else parseXLSX(e.target.result,kind);
-                showStatus(`✅ ${kind.toUpperCase()} 로드 완료: ${kind==='raw'?rawRows.length:raw2Rows.length}행`,'success');
             }
+            // Show checkmark
+            const checkId = 'check' + kind.charAt(0).toUpperCase() + kind.slice(1);
+            const dropzoneId = 'dropzone' + kind.charAt(0).toUpperCase() + kind.slice(1);
+            const checkEl = document.getElementById(checkId);
+            const dropzoneEl = document.getElementById(dropzoneId);
+            if(checkEl && dropzoneEl) {
+                dropzoneEl.classList.add('uploaded');
+            }
+            
+            let msg = `✅ ${kind.toUpperCase()} 로드 완료`;
+            if(kind==='raw') msg += `: ${rawRows.length}행`;
+            else if(kind==='raw2') msg += `: ${raw2Rows.length}행`;
+            else if(kind==='product') msg += `: ${productRows.length}행`;
+            else if(kind==='tsv') msg += `: ${Object.keys(productMap).length}개 상품`;
+            showStatus(msg,'success');
             processData();
         }catch(err){ console.error(err); showStatus('❌ 오류: '+err.message,'error'); }
     };
@@ -943,12 +1015,14 @@ function updateAll(){
     updateCampaignTable();
     updateAdgroupTable();
     updateKeywordTable(true);
+    updateProductTable();
     updateMediaTable();
     updateEfficiencyAnalysis();
     updateCPCAnalysis();
     updateDeviceTables();
     createCharts();
     updateStackedChart();
+    updateTop10Tables();
 }
 
 /* ============ 카드(성과 요약) ============ */
@@ -973,6 +1047,7 @@ function updateStats(){
         {key:'roas', label:'ROAS'}, {key:'aov', label:'평균 주문 금액'}, {key:'cor', label:'매출액 대비 광고비'}
     ];
     const wrap = document.getElementById('statsContainer');
+    if(!wrap) return;
     wrap.innerHTML = fields.map(f=>{
         const curV=cur[f.key]||0, prevV=prev[f.key]||0, avgV=avg4[f.key]||0;
         const chPrev=getChangeRate(curV, prevV);
@@ -986,12 +1061,12 @@ function updateStats(){
             </div>
         </div>`;
     }).join('');
-    document.getElementById('uploadStats').innerHTML = fields.map(f=>`<div><strong>${f.label}:</strong> ${formatCardValue(f.key, cur[f.key])}</div>`).join('');
 }
 
 /* ============ 차트(4주 추이) ============ */
 function createCharts(){
     const container=document.getElementById('overviewCharts');
+    if(!container) return;
     if(!weeks.length){ container.innerHTML=''; return; }
     const metricsList = [
         { key:'cost', label:'광고비' }, { key:'revenue', label:'매출액' }, { key:'roas', label:'ROAS' },
@@ -1029,8 +1104,11 @@ function createCharts(){
 /* ============ 성과 비중 분석 (전체 보기 기본) ============ */
 function updateStackedChart() {
     if (currentWeekData.length === 0) return;
-    const groupBy = document.getElementById('stackChartType').value;
-    const limit = parseInt(document.getElementById('stackLimit').value); // 0이면 전체보기
+    const groupByEl = document.getElementById('stackChartType');
+    const limitEl = document.getElementById('stackLimit');
+    if(!groupByEl || !limitEl) return;
+    const groupBy = groupByEl.value;
+    const limit = parseInt(limitEl.value); // 0이면 전체보기
     const grouped = {};
     let total = { cost: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0 };
     currentWeekData.forEach(d => {
@@ -1382,17 +1460,17 @@ function generateTotalRowHTML(list, colSpan, typeKey){
     const keys=['cost','impressions','clicks','ctr','cpc','conversions','cvr','revenue','cpa','roas'];
     const val=(k,m,p)=>`<td class="number">${formatCardValue(k,m[k])} <span class="badge-mini">${badge(getChangeRate(m[k], p[k]||0))}</span></td>`;
     const valNoBadge=(k,m)=>`<td class="number">${formatCardValue(k,m[k])}</td>`;
-    const prevCells=keys.map(k=>`<td class="number">${formatCardValue(k, prev[k]||0)}</td>`).join('');
+    const prevCells=keys.map(k=>valNoBadge(k, prev)).join('');
     const curCells =keys.map(k=>val(k, cur, prev)).join('');
     const avgCells =keys.map(k=>valNoBadge(k, avg4)).join('');
-    const labelColSpan=(typeKey==='adgroup')?4:(typeKey==='keyword'?4:3);
-    const prevLabel=weeks[1]?`TOTAL (${weeks[1]})`:'TOTAL (지난 데이터)';
-    const curLabel =weeks[0]?`TOTAL (${weeks[0]})`:'TOTAL';
+    const labelColSpan=(typeKey==='adgroup')?4:(typeKey==='keyword'?4:(typeKey==='product'?5:3));
+    const prevLabel=weeks[1]?`TOTAL (${weeks[1]})`:'TOTAL (이전주)';
+    const curLabel =weeks[0]?`TOTAL (${weeks[0]})`:'TOTAL (현재주)';
     const avgLabel ='TOTAL (4주 평균)';
     return `
         <tr class="total-row" style="background:#dff1ff;"><td colspan="${labelColSpan}" style="text-align:center;">${avgLabel}</td>${avgCells}</tr>
-        <tr class="total-row"><td colspan="${labelColSpan}" style="text-align:center;">${curLabel}</td>${curCells}</tr>
         <tr class="prev-total-row"><td colspan="${labelColSpan}" style="text-align:center;">${prevLabel}</td>${prevCells}</tr>
+        <tr class="total-row"><td colspan="${labelColSpan}" style="text-align:center;">${curLabel}</td>${curCells}</tr>
     `;
 }
 
@@ -1582,7 +1660,7 @@ function updateKeywordTable(reset){
             <td class="number">${formatCardValue('cvr', it.m.cvr)} <span class="badge-mini">${badge(getChangeRate(it.m.cvr, it.pm.cvr||0))}</span></td>
             <td class="number">${formatCardValue('revenue', it.m.revenue)} <span class="badge-mini">${badge(getChangeRate(it.m.revenue, it.pm.revenue||0))}</span></td>
             <td class="number">${formatCardValue('cpa', it.m.cpa)} <span class="badge-mini">${badge(getChangeRate(it.m.cpa, it.pm.cpa||0))}</span></td>
-            <td class="number" style="color:#111;">${formatCardValue('roas', it.m.roas)}</td>
+            <td class="number" style="color:#111;">${formatCardValue('roas', it.m.roas)} <span class="badge-mini">${badge(getChangeRate(it.m.roas, it.pm.roas||0))}</span></td>
         </tr>`;
         html+=addDetailRow(14,it.keyword,it.m,it.pm,prevLabel,it.avgM);
     });
@@ -1706,7 +1784,7 @@ function updateCPCAnalysis(){
     const costMin=+document.getElementById('cpcCostMin').value;
     const convMin=+document.getElementById('cpcConvMin').value;
     const roasMin=+document.getElementById('cpcROASMin').value;
-    const cpaMin=+document.getElementById('cpcCPAMin').value;
+    const cpaMax=+document.getElementById('cpcCPAMax').value;
     const th=+document.getElementById('cpcChangeThreshold').value || 0;
     const totalCost=sum(raw2Rows.filter(d=>weeks.includes(d.week)),'cost');
     const curMap=aggregate(raw2Rows.filter(d=>{
@@ -1722,7 +1800,7 @@ function updateCPCAnalysis(){
         if(!isNaN(costMin)&&cur.cost<costMin) return;
         if(!isNaN(convMin)&&cur.conversions<convMin) return;
         if(!isNaN(roasMin)&&cur.roas<roasMin) return;
-        if(!isNaN(cpaMin)&&cur.cpa<cpaMin) return;
+        if(!isNaN(cpaMax)&&cur.cpa>cpaMax) return;
         const change=prev.cpc===0?100:((cur.cpc-prev.cpc)/prev.cpc*100);
         const costShare= totalCost>0 ? (cur.cost/totalCost*100) : 0;
         const row={keyword:k, data:curMap[k].sample, m:cur, pm:prev, change, costShare};
@@ -1831,7 +1909,8 @@ function resetAdgroup(){ document.getElementById('adgroupFilter').value=''; docu
 function resetKeyword(){ document.getElementById('keywordSearch').value=''; document.getElementById('deviceFilter').value=''; document.getElementById('keywordCampaignFilter').value=''; document.getElementById('keywordCampaignTypeFilter').value=''; document.getElementById('keywordAdgroupFilter').value=''; document.getElementById('standardROAS2').value=''; clearROASFilter('keywordBody'); keywordPage = 1; updateKeywordTable(true); }
 function resetMedia(){ document.getElementById('mediaFilter').value=''; document.getElementById('mediaCampaignFilter').value=''; document.getElementById('mediaCampaignTypeFilter').value=''; document.getElementById('mediaAdgroupFilter').value=''; document.getElementById('mediaDeviceFilter').value=''; document.getElementById('standardROAS_MEDIA').value=''; clearROASFilter('mediaBody'); updateMediaTable(); }
 function resetEfficiency(){ document.getElementById('brandExclude').value=''; document.getElementById('efficiencyCampaignTypeFilter').value=''; document.getElementById('efficiencyCampaignFilter').value=''; document.getElementById('efficiencyAdgroupFilter').value=''; document.getElementById('filterCostMin').value=''; document.getElementById('filterConvMin').value=''; document.getElementById('filterROASMin').value=''; document.getElementById('filterCPAMin').value=''; updateEfficiencyAnalysis(); }
-function resetCPC(){ document.getElementById('cpcBrandExclude').value=''; document.getElementById('cpcCampaignTypeFilter').value=''; document.getElementById('cpcCampaignFilter').value=''; document.getElementById('cpcAdgroupFilter').value=''; document.getElementById('cpcCostMin').value=''; document.getElementById('cpcConvMin').value=''; document.getElementById('cpcROASMin').value=''; document.getElementById('cpcCPAMin').value=''; document.getElementById('cpcChangeThreshold').value=''; updateCPCAnalysis(); }
+function resetCPC(){ document.getElementById('cpcBrandExclude').value=''; document.getElementById('cpcCampaignTypeFilter').value=''; document.getElementById('cpcCampaignFilter').value=''; document.getElementById('cpcAdgroupFilter').value=''; document.getElementById('cpcCostMin').value=''; document.getElementById('cpcConvMin').value=''; document.getElementById('cpcROASMin').value=''; document.getElementById('cpcCPAMax').value=''; document.getElementById('cpcChangeThreshold').value=''; updateCPCAnalysis(); }
+function resetProduct(){ document.getElementById('productFilter').value=''; document.getElementById('productCampaignFilter').value=''; document.getElementById('productAdgroupFilter').value=''; document.getElementById('productDeviceFilter').value=''; document.getElementById('standardROAS_PROD').value=''; clearROASFilter('productBody'); updateProductTable(); }
 
 /* ============ 상품 분석 ============ */
 function updateProductTable(){
@@ -1843,52 +1922,165 @@ function updateProductTable(){
     const filter=(document.getElementById('productFilter').value||'').toLowerCase();
     const campF=document.getElementById('productCampaignFilter').value;
     const agF=document.getElementById('productAdgroupFilter').value;
+    const devF=document.getElementById('productDeviceFilter').value;
     
     const curData = productRows.filter(d => weeks.includes(d.week) && d.week === weeks[0] &&
         (!campF||d.campaign===campF) && (!agF||d.adgroup===agF));
-    const curMap = aggregate(curData, d=>d.productId||'미분류');
+    const prevData = productRows.filter(d => d.week === weeks[1] &&
+        (!campF||d.campaign===campF) && (!agF||d.adgroup===agF));
     
+    const curMap = aggregate(curData, d=>d.productId||'미분류');
+    const prevMap = aggregate(prevData, d=>d.productId||'미분류');
+    const fourWeeks = productRows.filter(d=>weeks.includes(d.week) &&
+        (!campF||d.campaign===campF) && (!agF||d.adgroup===agF));
+    const avgMap = aggregate(fourWeeks, d=>d.productId||'미분류');
+    const denom = weeks.length || 1;
+    
+    const list=Object.keys(curMap).map(k=>{
+        const productInfo = productMap[k] || {name: k, image: ''};
+        if(filter && productInfo.name.toLowerCase().indexOf(filter)===-1) return null;
+        
+        const m=calcMetrics([curMap[k]]); 
+        const pm=prevMap[k]?calcMetrics([prevMap[k]]):calcMetrics([]);
+        let avgM = {cost:0,impressions:0,clicks:0,conversions:0,revenue:0,roas:0};
+        if(avgMap[k]) {
+            ['cost','impressions','clicks','conversions','revenue'].forEach(key => avgM[key] = avgMap[k][key]/denom);
+            avgM.roas = avgM.cost>0 ? (avgM.revenue/avgM.cost)*100 : 0;
+        }
+        return {productId:k, productInfo, data:curMap[k].sample, m, pm, avgM};
+    }).filter(Boolean).sort((a,b)=>b.m.conversions-a.m.conversions);
+    
+    // Add product filter options
     const camps=[...new Set(productRows.map(d=>d.campaign).filter(Boolean))].sort();
     const adgs=[...new Set(productRows.map(d=>d.adgroup).filter(Boolean))].sort();
     const setOpts=(id,arr,label)=>{ const el=document.getElementById(id); if(!el) return; el.innerHTML=`<option value="">${label}</option>`+arr.map(v=>`<option value="${v}">${v}</option>`).join(''); };
     setOpts('productCampaignFilter', camps, '캠페인 전체');
     setOpts('productAdgroupFilter', adgs, '광고그룹 전체');
     
-    const list=Object.keys(curMap).map(k=>{
-        const productInfo = productMap[k] || {name: k, image: ''};
-        if(filter && productInfo.name.toLowerCase().indexOf(filter)===-1) return null;
-        const m=calcMetrics([curMap[k]]);
-        return {productId:k, productInfo, data:curMap[k].sample, m};
-    }).filter(Boolean).sort((a,b)=>b.m.conversions-a.m.conversions);
-    
-    let html = list.map((it,idx)=>{
+    let html=generateTotalRowHTML(list,15,'product');
+    const prevLabel=weeks[1]?`${weeks[1]} 지난 데이터`:'지난 데이터';
+    list.forEach((it,idx)=>{
         const imgSrc = it.productInfo.image || '';
-        const imgTag = imgSrc ? `<img src="${imgSrc}" style="width:40px; height:40px; object-fit:cover; border-radius:4px;">` : '<div style="width:40px; height:40px; background:#ddd; border-radius:4px;"></div>';
-        return `<tr>
+        const imgTag = imgSrc ? `<img src="${imgSrc}" style="width:40px; height:40px; object-fit:cover; border-radius:4px;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22%3E%3Crect fill=%22%23ddd%22 width=%2240%22 height=%2240%22/%3E%3C/svg%3E'">` : '<div style="width:40px; height:40px; background:#ddd; border-radius:4px;"></div>';
+        html+=`<tr class="collapsible" data-key="${it.productId}" data-roas="${it.m.roas}">
             <td><span class="rank-badge">${idx+1}</span></td>
             <td>${imgTag}</td>
             <td style="text-align:left;" class="text-col" title="${it.productInfo.name}">${it.productInfo.name}</td>
             <td class="text-col" title="${it.data.campaign}">${it.data.campaign}</td>
             <td class="text-col" title="${it.data.adgroup}">${it.data.adgroup}</td>
-            <td class="number">${formatCardValue('cost', it.m.cost)}</td>
-            <td class="number">${formatCardValue('impressions', it.m.impressions)}</td>
-            <td class="number">${formatCardValue('clicks', it.m.clicks)}</td>
-            <td class="number">${formatCardValue('ctr', it.m.ctr)}</td>
-            <td class="number">${formatCardValue('cpc', it.m.cpc)}</td>
-            <td class="number">${formatCardValue('conversions', it.m.conversions)}</td>
-            <td class="number">${formatCardValue('cvr', it.m.cvr)}</td>
-            <td class="number">${formatCardValue('revenue', it.m.revenue)}</td>
-            <td class="number">${formatCardValue('cpa', it.m.cpa)}</td>
-            <td class="number">${formatCardValue('roas', it.m.roas)}</td>
+            <td class="number">${formatCardValue('cost', it.m.cost)} <span class="badge-mini">${badge(getChangeRate(it.m.cost, it.pm.cost||0))}</span></td>
+            <td class="number">${formatCardValue('impressions', it.m.impressions)} <span class="badge-mini">${badge(getChangeRate(it.m.impressions, it.pm.impressions||0))}</span></td>
+            <td class="number">${formatCardValue('clicks', it.m.clicks)} <span class="badge-mini">${badge(getChangeRate(it.m.clicks, it.pm.clicks||0))}</span></td>
+            <td class="number">${formatCardValue('ctr', it.m.ctr)} <span class="badge-mini">${badge(getChangeRate(it.m.ctr, it.pm.ctr||0))}</span></td>
+            <td class="number">${formatCardValue('cpc', it.m.cpc)} <span class="badge-mini">${badge(getChangeRate(it.m.cpc, it.pm.cpc||0))}</span></td>
+            <td class="number">${formatCardValue('conversions', it.m.conversions)} <span class="badge-mini">${badge(getChangeRate(it.m.conversions, it.pm.conversions||0))}</span></td>
+            <td class="number">${formatCardValue('cvr', it.m.cvr)} <span class="badge-mini">${badge(getChangeRate(it.m.cvr, it.pm.cvr||0))}</span></td>
+            <td class="number">${formatCardValue('revenue', it.m.revenue)} <span class="badge-mini">${badge(getChangeRate(it.m.revenue, it.pm.revenue||0))}</span></td>
+            <td class="number">${formatCardValue('cpa', it.m.cpa)} <span class="badge-mini">${badge(getChangeRate(it.m.cpa, it.pm.cpa||0))}</span></td>
+            <td class="number" style="color:#111;">${formatCardValue('roas', it.m.roas)} <span class="badge-mini">${badge(getChangeRate(it.m.roas, it.pm.roas||0))}</span></td>
         </tr>`;
-    }).join('');
+        html+=addDetailRow(15,it.productId,it.m,it.pm,prevLabel,it.avgM);
+    });
     tbody.innerHTML = html || '<tr><td colspan="15" class="no-data">검색 결과가 없습니다.</td></tr>';
+    bindRowToggle('productBody'); clearROASFilter('productBody');
 }
-function resetProduct(){ 
-    document.getElementById('productFilter').value=''; 
-    document.getElementById('productCampaignFilter').value=''; 
-    document.getElementById('productAdgroupFilter').value=''; 
-    updateProductTable(); 
+
+/* ============ TOP10 테이블 ============ */
+function updateTop10Tables(){
+    const container = document.getElementById('top10Grid');
+    if(!raw2Rows.length){ container.innerHTML=''; return; }
+    
+    const curData = raw2Rows.filter(d => d.week === weeks[0]);
+    const kwMap = aggregate(curData, d=>d.keyword||'미분류');
+    
+    const metrics = [
+        {key:'cost', label:'광고비'},
+        {key:'impressions', label:'노출수'},
+        {key:'clicks', label:'클릭수'},
+        {key:'conversions', label:'전환수'},
+        {key:'revenue', label:'매출액'}
+    ];
+    
+    container.innerHTML = metrics.map(metric => {
+        const sorted = Object.keys(kwMap).map(k => {
+            const m = calcMetrics([kwMap[k]]);
+            return {keyword:k, value:m[metric.key]};
+        }).sort((a,b)=>b.value-a.value).slice(0,10);
+        
+        let tableHTML = `<table class="top10-table"><thead><tr><th colspan="2">${metric.label} TOP 10</th></tr></thead><tbody>`;
+        sorted.forEach((item,idx)=>{
+            tableHTML += `<tr><td style="width:25px; text-align:center; font-weight:bold; color:#007bff;">${idx+1}</td><td>${item.keyword}</td></tr>`;
+        });
+        tableHTML += '</tbody></table>';
+        return tableHTML;
+    }).join('');
+}
+
+/* ============ 드래그&드롭 초기화 ============ */
+function initDragAndDrop() {
+    const dropzones = [
+        {id: 'dropzoneRaw', fileInputId: 'fileInputRaw', kind: 'raw'},
+        {id: 'dropzoneRaw2', fileInputId: 'fileInputRaw2', kind: 'raw2'},
+        {id: 'dropzoneProduct', fileInputId: 'fileInputProduct', kind: 'product'},
+        {id: 'dropzoneTSV', fileInputId: 'fileInputTSV', kind: 'tsv'}
+    ];
+    
+    dropzones.forEach(zone => {
+        const dropzoneEl = document.getElementById(zone.id);
+        if(!dropzoneEl) return;
+        
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzoneEl.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // Highlight drop zone when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzoneEl.addEventListener(eventName, () => {
+                dropzoneEl.style.borderColor = '#007bff';
+                dropzoneEl.style.background = '#f0f7ff';
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzoneEl.addEventListener(eventName, () => {
+                dropzoneEl.style.borderColor = '';
+                dropzoneEl.style.background = '';
+            }, false);
+        });
+        
+        // Handle dropped files
+        dropzoneEl.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if(files.length > 0) {
+                const fileInput = document.getElementById(zone.fileInputId);
+                if(fileInput) {
+                    // Create a new FileList-like object
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(files[0]);
+                    fileInput.files = dataTransfer.files;
+                    
+                    // Trigger the change event
+                    const event = new Event('change', { bubbles: true });
+                    fileInput.dispatchEvent(event);
+                }
+            }
+        }, false);
+    });
+}
+
+// Initialize drag and drop when page loads
+if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDragAndDrop);
+} else {
+    initDragAndDrop();
 }
 </script>
 </body>
