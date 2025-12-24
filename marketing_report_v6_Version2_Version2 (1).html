@@ -755,9 +755,14 @@ const colorPalette = [
 const COLS_RAW = { DAY:0, WEEK:1, CAMPAIGN_TYPE:2, CAMPAIGN:3, ADGROUP:4, TIME:5, DOW:6, MEDIA:7, DEVICE:8, COST:9, IMP:10, CLK:11, CONV:12, REV:13, POS:14 };
 const COLS_RAW2 = { DAY:0, WEEK:1, CAMPAIGN_TYPE:2, CAMPAIGN:3, ADGROUP:4, KEYWORD:5, MEDIA:6, DEVICE:7, SEARCH_OR_CONTENT:8, COST:9, IMP:10, CLK:11, CONV:12, REV:13, POS:14 };
 
+/* ============ 상수 ============ */
+const DEFAULT_IMG_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E';
+const PRODUCT_NOT_MATCHED = '매칭실패';
+
 /* ============ 유틸 ============ */
 const sum = (arr, key) => arr.reduce((s,d)=>s+(d[key]||0),0);
 const formatNum = v => Math.round(v).toLocaleString();
+const capitalize = str => str.charAt(0).toUpperCase() + str.slice(1);
 const formatPct2 = v => (v||0).toFixed(2) + '%';
 const formatMoney = v => Math.round(v).toLocaleString();
 function formatCardValue(key, value){
@@ -860,22 +865,23 @@ function handleUpload(ev, kind){
     const reader=new FileReader();
     reader.onload=e=>{
         try{
+            const kindCap = capitalize(kind);
             if(kind === 'product') {
                 parseTSV(e.target.result);
-                document.getElementById('uploadBox' + kind.charAt(0).toUpperCase() + kind.slice(1)).classList.add('uploaded');
-                document.getElementById('status' + kind.charAt(0).toUpperCase() + kind.slice(1)).innerHTML = '<span class="success">✅</span>';
+                document.getElementById('uploadBox' + kindCap).classList.add('uploaded');
+                document.getElementById('status' + kindCap).innerHTML = '<span class="success">✅</span>';
                 showStatus(`✅ Product 파일 로드 완료: ${Object.keys(productMap).length}개 상품`,'success');
             } else if(kind === 'creative') {
                 parseCreativeCSV(e.target.result);
-                document.getElementById('uploadBox' + kind.charAt(0).toUpperCase() + kind.slice(1)).classList.add('uploaded');
-                document.getElementById('status' + kind.charAt(0).toUpperCase() + kind.slice(1)).innerHTML = '<span class="success">✅</span>';
+                document.getElementById('uploadBox' + kindCap).classList.add('uploaded');
+                document.getElementById('status' + kindCap).innerHTML = '<span class="success">✅</span>';
                 showStatus(`✅ Creative 파일 로드 완료: ${creativeRows.length}행`,'success');
                 processCreativeData();
             } else {
                 if(file.name.endsWith('.csv')) parseCSV(e.target.result,kind);
                 else parseXLSX(e.target.result,kind);
-                document.getElementById('uploadBox' + kind.charAt(0).toUpperCase() + kind.slice(1)).classList.add('uploaded');
-                document.getElementById('status' + kind.charAt(0).toUpperCase() + kind.slice(1)).innerHTML = '<span class="success">✅</span>';
+                document.getElementById('uploadBox' + kindCap).classList.add('uploaded');
+                document.getElementById('status' + kindCap).innerHTML = '<span class="success">✅</span>';
                 showStatus(`✅ ${kind.toUpperCase()} 로드 완료: ${kind==='raw'?rawRows.length:raw2Rows.length}행`,'success');
                 processData();
             }
@@ -905,7 +911,6 @@ function parseTSV(buf){
 function parseCreativeCSV(buf){
     const text=new TextDecoder('utf-8').decode(buf);
     Papa.parse(text, {
-        encoding: 'EUC-KR',
         skipEmptyLines: true,
         complete: function(results) {
             const headRow = results.data.findIndex(r => r.join(',').includes("캠페인유형"));
@@ -1096,7 +1101,7 @@ function updateCreativeTable(){
     });
     
     const list = Object.values(aggMap).map(item => {
-        const product = productMap[item.material] || { name: '매칭실패', img: '', price: '', category: '' };
+        const product = productMap[item.material] || { name: PRODUCT_NOT_MATCHED, img: '', price: '', category: '' };
         const m = calcMetrics([item]);
         if(search && product.name.toLowerCase().indexOf(search) === -1) return null;
         return {
@@ -1111,10 +1116,10 @@ function updateCreativeTable(){
     
     let html = '';
     list.forEach((it, idx) => {
-        const imgSrc = it.productImg || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E';
+        const imgSrc = it.productImg || DEFAULT_IMG_PLACEHOLDER;
         html += `<tr>
             <td>${idx + 1}</td>
-            <td><img src="${imgSrc}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
+            <td><img src="${imgSrc}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;" onerror="this.src='${DEFAULT_IMG_PLACEHOLDER}'"></td>
             <td class="text-col" title="${it.productName}">${it.productName}</td>
             <td class="text-col" title="${it.campaign}">${it.campaign}</td>
             <td class="text-col" title="${it.adgroup}">${it.adgroup}</td>
