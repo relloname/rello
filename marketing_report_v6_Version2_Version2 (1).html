@@ -758,11 +758,16 @@ const COLS_RAW2 = { DAY:0, WEEK:1, CAMPAIGN_TYPE:2, CAMPAIGN:3, ADGROUP:4, KEYWO
 /* ============ 상수 ============ */
 const DEFAULT_IMG_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E';
 const PRODUCT_NOT_MATCHED = '매칭실패';
+const UPLOAD_ID_MAP = {
+    'raw': 'Raw',
+    'raw2': 'Raw2',
+    'creative': 'Creative',
+    'product': 'Product'
+};
 
 /* ============ 유틸 ============ */
 const sum = (arr, key) => arr.reduce((s,d)=>s+(d[key]||0),0);
 const formatNum = v => Math.round(v).toLocaleString();
-const capitalize = str => str.charAt(0).toUpperCase() + str.slice(1);
 const formatPct2 = v => (v||0).toFixed(2) + '%';
 const formatMoney = v => Math.round(v).toLocaleString();
 function formatCardValue(key, value){
@@ -852,7 +857,8 @@ function handleDrop(event, kind) {
     event.currentTarget.classList.remove('dragover');
     const file = event.dataTransfer.files[0];
     if (!file) return;
-    const input = document.getElementById('fileInput' + kind.charAt(0).toUpperCase() + kind.slice(1));
+    const kindId = UPLOAD_ID_MAP[kind] || kind;
+    const input = document.getElementById('fileInput' + kindId);
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(file);
     input.files = dataTransfer.files;
@@ -865,23 +871,23 @@ function handleUpload(ev, kind){
     const reader=new FileReader();
     reader.onload=e=>{
         try{
-            const kindCap = capitalize(kind);
+            const kindId = UPLOAD_ID_MAP[kind] || kind;
             if(kind === 'product') {
                 parseTSV(e.target.result);
-                document.getElementById('uploadBox' + kindCap).classList.add('uploaded');
-                document.getElementById('status' + kindCap).innerHTML = '<span class="success">✅</span>';
+                document.getElementById('uploadBox' + kindId).classList.add('uploaded');
+                document.getElementById('status' + kindId).innerHTML = '<span class="success">✅</span>';
                 showStatus(`✅ Product 파일 로드 완료: ${Object.keys(productMap).length}개 상품`,'success');
             } else if(kind === 'creative') {
                 parseCreativeCSV(e.target.result);
-                document.getElementById('uploadBox' + kindCap).classList.add('uploaded');
-                document.getElementById('status' + kindCap).innerHTML = '<span class="success">✅</span>';
+                document.getElementById('uploadBox' + kindId).classList.add('uploaded');
+                document.getElementById('status' + kindId).innerHTML = '<span class="success">✅</span>';
                 showStatus(`✅ Creative 파일 로드 완료: ${creativeRows.length}행`,'success');
                 processCreativeData();
             } else {
                 if(file.name.endsWith('.csv')) parseCSV(e.target.result,kind);
                 else parseXLSX(e.target.result,kind);
-                document.getElementById('uploadBox' + kindCap).classList.add('uploaded');
-                document.getElementById('status' + kindCap).innerHTML = '<span class="success">✅</span>';
+                document.getElementById('uploadBox' + kindId).classList.add('uploaded');
+                document.getElementById('status' + kindId).innerHTML = '<span class="success">✅</span>';
                 showStatus(`✅ ${kind.toUpperCase()} 로드 완료: ${kind==='raw'?rawRows.length:raw2Rows.length}행`,'success');
                 processData();
             }
