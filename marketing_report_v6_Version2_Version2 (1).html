@@ -6,6 +6,7 @@
     <title>마케팅 성과 종합 리포트 (4주)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; background: #f5f5f5; padding: 20px; }
@@ -90,6 +91,34 @@
         /* 순위 분석 스타일 */
         .rank-heatmap-table th, .rank-heatmap-table td { text-align: center; border: 1px solid #eee; padding: 8px; font-size: 11px; }
         .rank-heatmap-table th { background: #f8f9fa; font-weight: bold; }
+        
+        /* Drag and Drop Upload Styles */
+        .upload-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .upload-box { border: 2px dashed #ccc; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; position: relative; background: #fafafa; }
+        .upload-box:hover { border-color: #007bff; background: #f0f7ff; }
+        .upload-box.dragover { border-color: #28a745; background: #f0fff4; }
+        .upload-box.uploaded { border-color: #28a745; background: #d4edda; border-style: solid; }
+        .upload-box input[type="file"] { position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; }
+        .upload-label { font-size: 13px; font-weight: bold; color: #333; margin-bottom: 8px; display: block; }
+        .upload-hint { font-size: 11px; color: #666; margin-top: 8px; }
+        .upload-status { font-size: 24px; margin-top: 10px; }
+        .upload-status.success { color: #28a745; }
+        
+        /* Sticky Total Rows */
+        .sticky-total { position: sticky; top: 42px; z-index: 9; }
+        .sticky-total-2 { position: sticky; top: 84px; z-index: 8; }
+        .sticky-total-3 { position: sticky; top: 126px; z-index: 7; }
+        
+        /* Top 10 Tables for Rank Analysis */
+        .top10-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .top10-table { font-size: 11px; }
+        .top10-table th { background: #007bff; color: white; padding: 8px 4px; font-size: 11px; }
+        .top10-table td { padding: 6px 4px; border-bottom: 1px solid #eee; }
+        .top10-table .rank { font-weight: bold; color: #007bff; }
+        
+        /* Creative Analysis Styles */
+        .creative-table td { text-align: left; }
+        .creative-table th { text-align: left; }
     </style>
 </head>
 <body>
@@ -108,6 +137,7 @@
         <button class="tab-btn" onclick="switchTab(event, 'campaign')">🎯 캠페인 분석</button>
         <button class="tab-btn" onclick="switchTab(event, 'adgroup')">🧩 광고그룹 분석</button>
         <button class="tab-btn" onclick="switchTab(event, 'keyword')">🔍 키워드 분석</button>
+        <button class="tab-btn" onclick="switchTab(event, 'creative')">🎨 소재 분석</button>
         <button class="tab-btn" onclick="switchTab(event, 'media')">📰 매체별 분석</button>
         <button class="tab-btn" onclick="switchTab(event, 'efficiency')">⚡ 효율분석</button>
         <button class="tab-btn" onclick="switchTab(event, 'cpc')">💲 CPC 분석</button>
@@ -121,22 +151,43 @@
                 <span>📤 데이터 업로드</span>
             </div>
             <div class="info-box">
-                💡 4주간 Naver 광고 보고서 CSV/XLSX 파일 2개를 업로드하세요.<br>
-                • 파일1 (RAW): 일별/주별, 시간대/요일 포함 (A~O 열)<br>
-                • 파일2 (RAW2): 일별/주별, 검색어 포함 (A~O 열, 검색/콘텐츠 매체 포함)<br>
-                두 파일 모두 2행부터 데이터가 시작됩니다.
+                💡 마케팅 성과 분석을 위한 4가지 파일을 업로드하세요.<br>
+                • RAW: 캠페인/광고그룹 일별 데이터 (CSV/XLSX)<br>
+                • Search Query: 키워드별 검색어 데이터 (CSV/XLSX)<br>
+                • Creative: 소재 성과 데이터 (CSV)<br>
+                • Product Info: 상품 정보 (TSV)
             </div>
-            <div class="controls">
-                <label>RAW (일/주별): <input type="file" id="fileInputRaw" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw')"></label>
-                <label>RAW2 (검색어): <input type="file" id="fileInputRaw2" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw2')"></label>
-            </div>
-            <div id="uploadStatus" class="status"></div>
-            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 4px;">
-                <strong>📊 업로드된 데이터 통계 (요약):</strong>
-                <div id="uploadStats" style="margin-top: 15px; color: #666; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
-                    <div>아직 데이터가 없습니다.</div>
+            <div class="upload-grid">
+                <div class="upload-box" id="uploadBoxRaw" ondrop="handleDrop(event, 'raw')" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <input type="file" id="fileInputRaw" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw')">
+                    <div class="upload-label">RAW</div>
+                    <div>📁 클릭 또는 드래그</div>
+                    <div class="upload-hint">CSV/XLSX</div>
+                    <div class="upload-status" id="statusRaw"></div>
+                </div>
+                <div class="upload-box" id="uploadBoxRaw2" ondrop="handleDrop(event, 'raw2')" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <input type="file" id="fileInputRaw2" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw2')">
+                    <div class="upload-label">Search Query</div>
+                    <div>📁 클릭 또는 드래그</div>
+                    <div class="upload-hint">CSV/XLSX</div>
+                    <div class="upload-status" id="statusRaw2"></div>
+                </div>
+                <div class="upload-box" id="uploadBoxCreative" ondrop="handleDrop(event, 'creative')" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <input type="file" id="fileInputCreative" accept=".csv" onchange="handleUpload(event, 'creative')">
+                    <div class="upload-label">Creative</div>
+                    <div>📁 클릭 또는 드래그</div>
+                    <div class="upload-hint">CSV</div>
+                    <div class="upload-status" id="statusCreative"></div>
+                </div>
+                <div class="upload-box" id="uploadBoxProduct" ondrop="handleDrop(event, 'product')" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <input type="file" id="fileInputProduct" accept=".tsv" onchange="handleUpload(event, 'product')">
+                    <div class="upload-label">Product Info</div>
+                    <div>📁 클릭 또는 드래그</div>
+                    <div class="upload-hint">TSV</div>
+                    <div class="upload-status" id="statusProduct"></div>
                 </div>
             </div>
+            <div id="uploadStatus" class="status"></div>
         </div>
     </div>
 
@@ -187,6 +238,13 @@
             <div class="section-title">
                 <span>🏆 순위 분석</span>
             </div>
+            
+            <!-- TOP 10 Search Terms -->
+            <div class="rank-panel" style="margin-bottom:20px; background:#fff; border:1px solid #ddd; padding:20px; border-radius:8px;">
+                <h3>🔝 검색어 TOP 10</h3>
+                <div id="top10Container" class="top10-grid"></div>
+            </div>
+            
             <div class="rank-panel" style="margin-bottom:20px; background:#fff; border:1px solid #ddd; padding:20px; border-radius:8px;">
                 <h3>📉 검색어별 순위 추이 (최근 14일)</h3>
                 <div class="controls" style="margin-top:10px;">
@@ -359,6 +417,45 @@
                     </thead>
                     <tbody id="keywordBody">
                     <tr><td colspan="14" class="no-data">데이터를 업로드해주세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB Creative: Creative Analysis -->
+    <div id="creative" class="tab-content">
+        <div class="section" id="section-creative">
+            <div class="section-title">
+                <span>🎨 소재 분석</span>
+            </div>
+            <div class="controls">
+                <input class="text-col" type="text" id="creativeProductFilter" placeholder="상품명 검색" onkeyup="updateCreativeTable()">
+                <select id="creativeCampaignFilter" onchange="updateCreativeTable()"><option value="">캠페인 전체</option></select>
+                <select id="creativeAdgroupFilter" onchange="updateCreativeTable()"><option value="">광고그룹 전체</option></select>
+                <button class="danger" onclick="resetCreative()">초기화</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="creativeTable" class="creative-table">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable('creativeTable', 0)">순위</th>
+                        <th onclick="sortTable('creativeTable', 1)">이미지</th>
+                        <th onclick="sortTable('creativeTable', 2)">상품명</th>
+                        <th onclick="sortTable('creativeTable', 3)">캠페인</th>
+                        <th onclick="sortTable('creativeTable', 4)">광고그룹</th>
+                        <th onclick="sortTable('creativeTable', 5)" class="number">광고비</th>
+                        <th onclick="sortTable('creativeTable', 6)" class="number">노출수</th>
+                        <th onclick="sortTable('creativeTable', 7)" class="number">클릭수</th>
+                        <th onclick="sortTable('creativeTable', 8)" class="number">클릭율</th>
+                        <th onclick="sortTable('creativeTable', 9)" class="number">CPC</th>
+                        <th onclick="sortTable('creativeTable', 10)" class="number">전환수</th>
+                        <th onclick="sortTable('creativeTable', 11)" class="number">매출액</th>
+                        <th onclick="sortTable('creativeTable', 12)" class="number">ROAS</th>
+                    </tr>
+                    </thead>
+                    <tbody id="creativeBody">
+                    <tr><td colspan="13" class="no-data">Creative 및 Product 파일을 업로드해주세요.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -640,6 +737,8 @@
 /* ============ 데이터/상수 ============ */
 let rawRows = [];
 let raw2Rows = [];
+let creativeRows = [];
+let productMap = {};
 let weeks = [];
 let currentWeekData = [];
 let previousWeekData = [];
@@ -735,19 +834,98 @@ function clearROASFilter(bodyId) {
 }
 function parseNumber(v){ if(v===undefined||v===null) return 0; return parseFloat(String(v).replace(/,/g,''))||0; }
 
+/* ============ 드래그앤드롭 핸들러 ============ */
+function handleDragOver(event) {
+    event.preventDefault();
+    event.currentTarget.classList.add('dragover');
+}
+function handleDragLeave(event) {
+    event.currentTarget.classList.remove('dragover');
+}
+function handleDrop(event, kind) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('dragover');
+    const file = event.dataTransfer.files[0];
+    if (!file) return;
+    const input = document.getElementById('fileInput' + kind.charAt(0).toUpperCase() + kind.slice(1));
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    input.files = dataTransfer.files;
+    handleUpload({target: input}, kind);
+}
+
 /* ============ 업로드/파싱 ============ */
 function handleUpload(ev, kind){
     const file=ev.target.files[0]; if(!file) return;
     const reader=new FileReader();
     reader.onload=e=>{
         try{
-            if(file.name.endsWith('.csv')) parseCSV(e.target.result,kind);
-            else parseXLSX(e.target.result,kind);
-            showStatus(`✅ ${kind.toUpperCase()} 로드 완료: ${kind==='raw'?rawRows.length:raw2Rows.length}행`,'success');
-            processData();
+            if(kind === 'product') {
+                parseTSV(e.target.result);
+                document.getElementById('uploadBox' + kind.charAt(0).toUpperCase() + kind.slice(1)).classList.add('uploaded');
+                document.getElementById('status' + kind.charAt(0).toUpperCase() + kind.slice(1)).innerHTML = '<span class="success">✅</span>';
+                showStatus(`✅ Product 파일 로드 완료: ${Object.keys(productMap).length}개 상품`,'success');
+            } else if(kind === 'creative') {
+                parseCreativeCSV(e.target.result);
+                document.getElementById('uploadBox' + kind.charAt(0).toUpperCase() + kind.slice(1)).classList.add('uploaded');
+                document.getElementById('status' + kind.charAt(0).toUpperCase() + kind.slice(1)).innerHTML = '<span class="success">✅</span>';
+                showStatus(`✅ Creative 파일 로드 완료: ${creativeRows.length}행`,'success');
+                processCreativeData();
+            } else {
+                if(file.name.endsWith('.csv')) parseCSV(e.target.result,kind);
+                else parseXLSX(e.target.result,kind);
+                document.getElementById('uploadBox' + kind.charAt(0).toUpperCase() + kind.slice(1)).classList.add('uploaded');
+                document.getElementById('status' + kind.charAt(0).toUpperCase() + kind.slice(1)).innerHTML = '<span class="success">✅</span>';
+                showStatus(`✅ ${kind.toUpperCase()} 로드 완료: ${kind==='raw'?rawRows.length:raw2Rows.length}행`,'success');
+                processData();
+            }
         }catch(err){ console.error(err); showStatus('❌ 오류: '+err.message,'error'); }
     };
     reader.readAsArrayBuffer(file);
+}
+function parseTSV(buf){
+    const text=new TextDecoder('utf-8').decode(buf);
+    Papa.parse(text, {
+        delimiter: '\t',
+        skipEmptyLines: true,
+        complete: function(results) {
+            results.data.slice(1).forEach(row => {
+                if(row[2]) {
+                    productMap[row[2].trim()] = {
+                        name: row[14] || '',
+                        img: row[15] || '',
+                        price: row[16] || '',
+                        category: row[17] || ''
+                    };
+                }
+            });
+        }
+    });
+}
+function parseCreativeCSV(buf){
+    const text=new TextDecoder('utf-8').decode(buf);
+    Papa.parse(text, {
+        encoding: 'EUC-KR',
+        skipEmptyLines: true,
+        complete: function(results) {
+            const headRow = results.data.findIndex(r => r.join(',').includes("캠페인유형"));
+            creativeRows = results.data.slice(headRow + 1)
+                .filter(r => r[0] && r[1])
+                .map(r => ({
+                    campaignType: r[0],
+                    campaign: r[1],
+                    adgroup: r[2],
+                    material: r[3] ? r[3].trim() : '',
+                    date: r[6],
+                    week: r[7],
+                    cost: parseNumber(r[8]),
+                    impressions: parseNumber(r[9]),
+                    clicks: parseNumber(r[10]),
+                    conversions: parseNumber(r[11]),
+                    revenue: parseNumber(r[12])
+                }));
+        }
+    });
 }
 function parseCSV(buf, kind){
     const text=new TextDecoder('utf-8').decode(buf);
@@ -853,8 +1031,156 @@ function updateAll(){
     updateEfficiencyAnalysis();
     updateCPCAnalysis();
     updateDeviceTables();
+    updateRankTop10();
     createCharts();
     updateStackedChart();
+}
+
+/* ============ 소재 분석 ============ */
+function processCreativeData(){
+    if(creativeRows.length === 0) return;
+    populateCreativeFilters();
+    updateCreativeTable();
+}
+function populateCreativeFilters(){
+    const camps = [...new Set(creativeRows.map(d => d.campaign || '').filter(Boolean))].sort();
+    const adgs = [...new Set(creativeRows.map(d => d.adgroup || '').filter(Boolean))].sort();
+    
+    const campSel = document.getElementById('creativeCampaignFilter');
+    const adgSel = document.getElementById('creativeAdgroupFilter');
+    
+    if(campSel) {
+        campSel.innerHTML = '<option value="">캠페인 전체</option>';
+        camps.forEach(c => campSel.innerHTML += `<option value="${c}">${c}</option>`);
+    }
+    if(adgSel) {
+        adgSel.innerHTML = '<option value="">광고그룹 전체</option>';
+        adgs.forEach(a => adgSel.innerHTML += `<option value="${a}">${a}</option>`);
+    }
+}
+function updateCreativeTable(){
+    const tbody = document.getElementById('creativeBody');
+    if(!creativeRows.length || !Object.keys(productMap).length){
+        tbody.innerHTML = '<tr><td colspan="13" class="no-data">Creative 및 Product 파일을 업로드해주세요.</td></tr>';
+        return;
+    }
+    
+    const search = (document.getElementById('creativeProductFilter').value || '').toLowerCase();
+    const campFilter = document.getElementById('creativeCampaignFilter').value;
+    const adgFilter = document.getElementById('creativeAdgroupFilter').value;
+    
+    // Aggregate by material
+    const aggMap = {};
+    creativeRows.forEach(d => {
+        if(campFilter && d.campaign !== campFilter) return;
+        if(adgFilter && d.adgroup !== adgFilter) return;
+        
+        const mat = d.material || '미분류';
+        if(!aggMap[mat]) {
+            aggMap[mat] = {
+                material: mat,
+                campaign: d.campaign,
+                adgroup: d.adgroup,
+                cost: 0,
+                impressions: 0,
+                clicks: 0,
+                conversions: 0,
+                revenue: 0
+            };
+        }
+        aggMap[mat].cost += d.cost;
+        aggMap[mat].impressions += d.impressions;
+        aggMap[mat].clicks += d.clicks;
+        aggMap[mat].conversions += d.conversions;
+        aggMap[mat].revenue += d.revenue;
+    });
+    
+    const list = Object.values(aggMap).map(item => {
+        const product = productMap[item.material] || { name: '매칭실패', img: '', price: '', category: '' };
+        const m = calcMetrics([item]);
+        if(search && product.name.toLowerCase().indexOf(search) === -1) return null;
+        return {
+            material: item.material,
+            productName: product.name,
+            productImg: product.img,
+            campaign: item.campaign,
+            adgroup: item.adgroup,
+            m: m
+        };
+    }).filter(Boolean).sort((a, b) => b.m.conversions - a.m.conversions);
+    
+    let html = '';
+    list.forEach((it, idx) => {
+        const imgSrc = it.productImg || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E';
+        html += `<tr>
+            <td>${idx + 1}</td>
+            <td><img src="${imgSrc}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
+            <td class="text-col" title="${it.productName}">${it.productName}</td>
+            <td class="text-col" title="${it.campaign}">${it.campaign}</td>
+            <td class="text-col" title="${it.adgroup}">${it.adgroup}</td>
+            <td class="number">${formatCardValue('cost', it.m.cost)}</td>
+            <td class="number">${formatCardValue('impressions', it.m.impressions)}</td>
+            <td class="number">${formatCardValue('clicks', it.m.clicks)}</td>
+            <td class="number">${formatCardValue('ctr', it.m.ctr)}</td>
+            <td class="number">${formatCardValue('cpc', it.m.cpc)}</td>
+            <td class="number">${formatCardValue('conversions', it.m.conversions)}</td>
+            <td class="number">${formatCardValue('revenue', it.m.revenue)}</td>
+            <td class="number" style="color:#111; font-weight:bold;">${formatCardValue('roas', it.m.roas)}</td>
+        </tr>`;
+    });
+    
+    tbody.innerHTML = html || '<tr><td colspan="13" class="no-data">검색 결과가 없습니다.</td></tr>';
+}
+function resetCreative(){
+    document.getElementById('creativeProductFilter').value = '';
+    document.getElementById('creativeCampaignFilter').value = '';
+    document.getElementById('creativeAdgroupFilter').value = '';
+    updateCreativeTable();
+}
+
+/* ============ 순위 분석 TOP 10 ============ */
+function updateRankTop10(){
+    if(raw2Rows.length === 0) {
+        document.getElementById('top10Container').innerHTML = '<p style="text-align:center; color:#999;">Search Query 데이터를 업로드해주세요.</p>';
+        return;
+    }
+    
+    const curData = raw2Rows.filter(d => d.week === weeks[0]);
+    const keywordAgg = {};
+    
+    curData.forEach(d => {
+        const kw = d.keyword || '미분류';
+        if(!keywordAgg[kw]) {
+            keywordAgg[kw] = { keyword: kw, cost: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0 };
+        }
+        keywordAgg[kw].cost += d.cost;
+        keywordAgg[kw].impressions += d.impressions;
+        keywordAgg[kw].clicks += d.clicks;
+        keywordAgg[kw].conversions += d.conversions;
+        keywordAgg[kw].revenue += d.revenue;
+    });
+    
+    const keywords = Object.values(keywordAgg);
+    
+    const createTop10Table = (title, sortKey, formatFn) => {
+        const sorted = [...keywords].sort((a, b) => b[sortKey] - a[sortKey]).slice(0, 10);
+        let html = `<div><h5 style="margin:0 0 10px; font-size:13px;">${title}</h5><table class="top10-table" style="width:100%; border-collapse:collapse;">`;
+        html += '<thead><tr><th style="width:30px;">#</th><th>검색어</th><th style="text-align:right;">값</th></tr></thead><tbody>';
+        sorted.forEach((kw, idx) => {
+            html += `<tr><td class="rank">${idx + 1}</td><td style="text-align:left;">${kw.keyword}</td><td style="text-align:right;">${formatFn(kw[sortKey])}</td></tr>`;
+        });
+        html += '</tbody></table></div>';
+        return html;
+    };
+    
+    let html = '';
+    html += createTop10Table('광고비 TOP 10', 'cost', v => formatMoney(v) + '원');
+    html += createTop10Table('노출수 TOP 10', 'impressions', v => formatNum(v));
+    html += createTop10Table('클릭수 TOP 10', 'clicks', v => formatNum(v));
+    html += createTop10Table('전환수 TOP 10', 'conversions', v => formatNum(v));
+    html += createTop10Table('매출액 TOP 10', 'revenue', v => formatMoney(v) + '원');
+    
+    document.getElementById('top10Container').innerHTML = html;
 }
 
 /* ============ 카드(성과 요약) ============ */
@@ -1292,13 +1618,13 @@ function generateTotalRowHTML(list, colSpan, typeKey){
     const curCells =keys.map(k=>val(k, cur, prev)).join('');
     const avgCells =keys.map(k=>valNoBadge(k, avg4)).join('');
     const labelColSpan=(typeKey==='adgroup')?4:(typeKey==='keyword'?4:3);
-    const prevLabel=weeks[1]?`TOTAL (${weeks[1]})`:'TOTAL (지난 데이터)';
-    const curLabel =weeks[0]?`TOTAL (${weeks[0]})`:'TOTAL';
+    const prevLabel=weeks[1]?`TOTAL (${weeks[1]})`:'TOTAL (지난주)';
+    const curLabel =weeks[0]?`TOTAL (${weeks[0]})`:'TOTAL (이번주)';
     const avgLabel ='TOTAL (4주 평균)';
     return `
-        <tr class="total-row" style="background:#dff1ff;"><td colspan="${labelColSpan}" style="text-align:center;">${avgLabel}</td>${avgCells}</tr>
-        <tr class="total-row"><td colspan="${labelColSpan}" style="text-align:center;">${curLabel}</td>${curCells}</tr>
-        <tr class="prev-total-row"><td colspan="${labelColSpan}" style="text-align:center;">${prevLabel}</td>${prevCells}</tr>
+        <tr class="total-row sticky-total" style="background:#fff3cd;"><td colspan="${labelColSpan}" style="text-align:center;font-weight:bold;">${avgLabel}</td>${avgCells}</tr>
+        <tr class="prev-total-row sticky-total-2" style="background:#e3f2fd;"><td colspan="${labelColSpan}" style="text-align:center;font-weight:bold;">${prevLabel}</td>${prevCells}</tr>
+        <tr class="total-row sticky-total-3" style="background:#d4edda;"><td colspan="${labelColSpan}" style="text-align:center;font-weight:bold;">${curLabel}</td>${curCells}</tr>
     `;
 }
 
@@ -1488,7 +1814,7 @@ function updateKeywordTable(reset){
             <td class="number">${formatCardValue('cvr', it.m.cvr)} <span class="badge-mini">${badge(getChangeRate(it.m.cvr, it.pm.cvr||0))}</span></td>
             <td class="number">${formatCardValue('revenue', it.m.revenue)} <span class="badge-mini">${badge(getChangeRate(it.m.revenue, it.pm.revenue||0))}</span></td>
             <td class="number">${formatCardValue('cpa', it.m.cpa)} <span class="badge-mini">${badge(getChangeRate(it.m.cpa, it.pm.cpa||0))}</span></td>
-            <td class="number" style="color:#111;">${formatCardValue('roas', it.m.roas)}</td>
+            <td class="number" style="color:#111;">${formatCardValue('roas', it.m.roas)} <span class="badge-mini">${badge(getChangeRate(it.m.roas, it.pm.roas||0))}</span></td>
         </tr>`;
         html+=addDetailRow(14,it.keyword,it.m,it.pm,prevLabel,it.avgM);
     });
