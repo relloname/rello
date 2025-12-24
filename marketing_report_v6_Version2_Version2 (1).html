@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Marketing Report v6</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 16px; }
     .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
@@ -20,6 +23,57 @@
     .card { border: 1px solid #e5e5e5; border-radius: 8px; padding: 12px; min-width: 220px; }
     .card h3 { margin: 0 0 8px 0; font-size: 14px; }
     .kpi { font-size: 22px; font-weight: 700; }
+
+    /* CSS from 소재.html - scoped to #shopping-dashboard-wrapper */
+    :root { --naver-green: #00c73c; --border: #ddd; --up: #ff4d4d; --down: #3182ce; }
+    
+    #shopping-dashboard-wrapper { font-family: 'Malgun Gothic', sans-serif; background-color: #f8f9fa; color: #333; }
+    #shopping-dashboard-wrapper .container { max-width: 100%; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    
+    #shopping-dashboard-wrapper #uploadSection { display: flex; gap: 20px; padding: 20px; background: #eee; border-radius: 8px; align-items: flex-end; margin-bottom: 20px; }
+    #shopping-dashboard-wrapper .file-input-group { display: flex; flex-direction: column; font-size: 12px; font-weight: bold; gap: 5px; }
+    
+    #shopping-dashboard-wrapper .filter-section { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid #eee; align-items: center; }
+    #shopping-dashboard-wrapper .card { min-width: 120px; padding: 10px 15px; background: white; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s; flex-shrink: 0; font-size: 13px; }
+    #shopping-dashboard-wrapper .card.active { border: 2px solid var(--naver-green); background: #f0fff4; font-weight: bold; }
+    #shopping-dashboard-wrapper .card:hover { background: #f9f9f9; }
+    #shopping-dashboard-wrapper .reset-btn { padding: 8px 18px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; flex-shrink: 0; }
+    #shopping-dashboard-wrapper .reset-btn:hover { background: #c0392b; }
+
+    #shopping-dashboard-wrapper .table-wrapper { overflow-x: auto; max-height: 500px; border: 1px solid #eee; border-radius: 8px; }
+    #shopping-dashboard-wrapper table { width: 100%; border-collapse: collapse; min-width: 1800px; }
+    #shopping-dashboard-wrapper th { background: #f1f3f4; padding: 12px; font-size: 12px; cursor: pointer; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #ddd; white-space: nowrap; }
+    #shopping-dashboard-wrapper td { border-bottom: 1px solid #eee; padding: 10px; text-align: center; font-size: 13px; line-height: 1.4; white-space: nowrap; }
+    #shopping-dashboard-wrapper .col-campaign, #shopping-dashboard-wrapper .col-adgroup { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #shopping-dashboard-wrapper .col-product { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+    
+    #shopping-dashboard-wrapper .diff { font-size: 10px; color: #888; }
+    #shopping-dashboard-wrapper .up { color: var(--up); }
+    #shopping-dashboard-wrapper .down { color: var(--down); }
+
+    #shopping-dashboard-wrapper #detailSection { margin-top: 30px; padding: 25px; border: 1px solid var(--border); border-radius: 12px; display: none; background: #fff; }
+    #shopping-dashboard-wrapper .tab-area { display: flex; gap: 8px; margin-top: 25px; margin-bottom: 20px; flex-wrap: wrap; }
+    #shopping-dashboard-wrapper .tab-btn { padding: 8px 16px; border: 1px solid var(--border); border-radius: 20px; background: #fff; cursor: pointer; font-size: 12px; transition: 0.2s; }
+    #shopping-dashboard-wrapper .tab-btn.active { background: var(--naver-green); color: white; border-color: var(--naver-green); }
+    #shopping-dashboard-wrapper .tab-btn:hover { background: #f0f0f0; }
+    
+    #shopping-dashboard-wrapper .chart-grid { display: flex; flex-direction: column; gap: 20px; }
+    #shopping-dashboard-wrapper .chart-container { border: 1px solid #f0f0f0; padding: 15px; border-radius: 8px; background: #fafafa; position: relative; }
+    #shopping-dashboard-wrapper .chart-box { height: 350px; margin-bottom: 15px; background: white; padding: 10px; border-radius: 6px; }
+    
+    /* Stats Styles */
+    #shopping-dashboard-wrapper .stats-row { display: flex; gap: 15px; margin-bottom: 15px; background: white; padding: 10px; border-radius: 8px; border: 1px solid #eee; justify-content: space-around; }
+    #shopping-dashboard-wrapper .stat-item { text-align: center; flex: 1; border-right: 1px solid #eee; }
+    #shopping-dashboard-wrapper .stat-item:last-child { border-right: none; }
+    #shopping-dashboard-wrapper .stat-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+    #shopping-dashboard-wrapper .stat-value { font-size: 14px; font-weight: bold; color: #2c3e50; }
+    #shopping-dashboard-wrapper .stat-value.max { color: var(--up); }
+    #shopping-dashboard-wrapper .stat-value.min { color: var(--down); }
+
+    #shopping-dashboard-wrapper canvas { width: 100% !important; height: 100% !important; }
+
+    #shopping-dashboard-wrapper .img-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
+    #shopping-dashboard-wrapper .badge-group { background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; }
   </style>
 </head>
 <body>
@@ -80,6 +134,73 @@
     </thead>
     <tbody id="tbody"></tbody>
   </table>
+
+  <hr style="margin: 40px 0; border: none; border-top: 2px solid #ddd;">
+  
+  <h1>Shopping Search Dashboard</h1>
+
+  <div id="shopping-dashboard-wrapper">
+    <div class="container">
+      <h2>🛍️ 쇼핑검색 통합 대시보드 (최근 7일 vs 지난주)</h2>
+      
+      <div id="uploadSection">
+        <div class="file-input-group"><label>1. 상품 정보 (TSV)</label><input type="file" id="tsvFile" accept=".tsv"></div>
+        <div class="file-input-group"><label>2. 성과 보고서 (CSV)</label><input type="file" id="csvFile" accept=".csv"></div>
+        <button onclick="startAnalysis()" style="background:var(--naver-green); color:white; border:none; padding:10px 25px; border-radius:6px; cursor:pointer; font-weight:bold;">데이터 분석 실행</button>
+      </div>
+
+      <div id="resultArea" style="display:none;">
+        <div id="cpCards" class="filter-section"></div>
+        <div id="grCards" class="filter-section"></div>
+        
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>이미지</th>
+                <th onclick="resort('cp')" class="col-campaign">캠페인</th>
+                <th onclick="resort('gr')" class="col-adgroup">광고그룹</th>
+                <th class="col-product">상품명</th>
+                <th onclick="resort('cost')">광고비</th>
+                <th onclick="resort('view')">노출수</th>
+                <th onclick="resort('click')">클릭수</th>
+                <th onclick="resort('ctr')">클릭율</th>
+                <th onclick="resort('cpc')">CPC</th>
+                <th onclick="resort('cv')">전환수</th>
+                <th onclick="resort('amt')">매출액</th>
+                <th onclick="resort('roas')">ROAS</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+
+        <div id="detailSection">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 id="detailTitle" style="margin:0;"></h3>
+            <button onclick="document.getElementById('detailSection').style.display='none'" style="color:red; border:none; background:none; cursor:pointer; font-weight:bold; font-size: 16px;">[✕ 닫기]</button>
+          </div>
+          <div class="tab-area" id="tabArea"></div>
+          <div class="chart-grid">
+            <div class="chart-container">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h5 style="margin:0;">📅 일별 추이</h5>
+              </div>
+              <div id="dayStats" class="stats-row"></div>
+              <div class="chart-box"><canvas id="dayChart"></canvas></div>
+            </div>
+            <div class="chart-container">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h5 style="margin:0;">📊 주별 추이 (최근 4주)</h5>
+              </div>
+              <div id="weekStats" class="stats-row"></div>
+              <div class="chart-box"><canvas id="weekChart"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     // ----- Data (example / placeholder) -----
@@ -231,6 +352,405 @@
     }
 
     init();
+  </script>
+
+  <script>
+    // JavaScript from 소재.html for Shopping Search Dashboard
+    let raw = [], pMap = {}, aggList = [];
+    let dChart = null, wChart = null;
+    let metric = 'amt';
+    let sKey = 'cv', sDir = 'desc', activeMat = null;
+    let filterCp = null, filterGr = null;
+
+    const metricNames = { 
+        amt:'매출액', 
+        cost:'광고비', 
+        view:'노출수', 
+        click:'클릭수', 
+        cv:'전환수', 
+        ctr:'클릭율(%)', 
+        cvr:'전환율(%)', 
+        roas:'ROAS(%)',
+        cpc:'CPC'
+    };
+
+    function startAnalysis() {
+        const tsv = document.getElementById('tsvFile').files[0];
+        const csv = document.getElementById('csvFile').files[0];
+        if(!tsv || !csv) return alert("파일을 업로드해주세요.");
+
+        Papa.parse(tsv, { delimiter: "\t", complete: (t) => {
+            t.data.forEach(r => { 
+                if(r[2]) pMap[r[2].trim()] = { name: r[14], img: r[15] }; 
+            });
+            
+            Papa.parse(csv, { encoding: "EUC-KR", skipEmptyLines: true, complete: (c) => {
+                const headRow = c.data.findIndex(r => r.join(',').includes("캠페인유형"));
+                raw = c.data.slice(headRow + 1)
+                    .filter(r => r[0] === "쇼핑검색")
+                    .map(r => ({
+                        cp: r[1], 
+                        gr: r[2], 
+                        mat: r[3].trim(), 
+                        date: r[6], 
+                        week: r[7],
+                        cost: Number(r[8]||0), 
+                        view: Number(r[9]||0), 
+                        click: Number(r[10]||0), 
+                        cv: Number(r[11]||0), 
+                        amt: Number(r[12]||0)
+                    }));
+                
+                document.getElementById('uploadSection').style.display = 'none';
+                document.getElementById('resultArea').style.display = 'block';
+                
+                resetFilters();
+            }});
+        }});
+    }
+
+    function resetFilters() {
+        filterCp = null;
+        filterGr = null;
+        renderFilters();
+        refresh();
+    }
+
+    function setCP(c) { 
+        filterCp = c; 
+        filterGr = null; 
+        renderFilters(); 
+        refresh(); 
+    }
+    
+    function setGR(g) { 
+        filterGr = g; 
+        renderFilters(); 
+        refresh(); 
+    }
+
+    function renderFilters() {
+        const cps = [...new Set(raw.map(d => d.cp))];
+        let h = `<button class="reset-btn" onclick="resetFilters()">🔄 초기화</button>`;
+        h += `<div class="card ${!filterCp?'active':''}" onclick="setCP(null)">전체 캠페인</div>`;
+        cps.forEach(c => h += `<div class="card ${filterCp===c?'active':''}" onclick="setCP('${c}')">${c}</div>`);
+        document.getElementById('cpCards').innerHTML = h;
+
+        if(filterCp) {
+            const grs = [...new Set(raw.filter(d => d.cp === filterCp).map(d => d.gr))];
+            let gh = `<div class="card ${!filterGr?'active':''}" onclick="setGR(null)">전체 광고그룹</div>`;
+            grs.forEach(g => gh += `<div class="card ${filterGr===g?'active':''}" onclick="setGR('${g}')">${g}</div>`);
+            document.getElementById('grCards').innerHTML = gh;
+        } else {
+            document.getElementById('grCards').innerHTML = '';
+        }
+    }
+
+    function refresh() {
+        const allDates = [...new Set(raw.map(d=>d.date))].sort().reverse();
+        const curDates = allDates.slice(0, 7);
+        const preDates = allDates.slice(7, 14);
+
+        let filtered = raw.filter(d => 
+            (!filterCp || d.cp === filterCp) &&
+            (!filterGr || d.gr === filterGr)
+        );
+
+        const agg = {};
+        const gCheck = {};
+        
+        filtered.forEach(r => {
+            const pName = pMap[r.mat]?.name || "알수없음";
+            const gk = `${r.cp}_${r.gr}_${pName}`;
+            if(!gCheck[gk]) gCheck[gk] = new Set(); 
+            gCheck[gk].add(r.mat);
+            
+            if(!agg[r.mat]) {
+                agg[r.mat] = { 
+                    cp: r.cp, gr: r.gr, mat: r.mat,
+                    cost:0, view:0, click:0, cv:0, amt:0, 
+                    pCost:0, pView:0, pClick:0, pCv:0, pAmt:0 
+                };
+            }
+            
+            if(curDates.includes(r.date)) { 
+                agg[r.mat].cost += r.cost; 
+                agg[r.mat].view += r.view; 
+                agg[r.mat].click += r.click; 
+                agg[r.mat].cv += r.cv; 
+                agg[r.mat].amt += r.amt; 
+            }
+            if(preDates.includes(r.date)) { 
+                agg[r.mat].pCost += r.cost; 
+                agg[r.mat].pView += r.view; 
+                agg[r.mat].pClick += r.click; 
+                agg[r.mat].pCv += r.cv; 
+                agg[r.mat].pAmt += r.amt; 
+            }
+        });
+
+        aggList = Object.values(agg).map(r => {
+            const pName = pMap[r.mat]?.name || "매칭실패";
+            return {
+                ...r, 
+                pName: pName,
+                pImg: pMap[r.mat]?.img || "",
+                isG: gCheck[`${r.cp}_${r.gr}_${pName}`]?.size > 1,
+                ctr: r.view > 0 ? (r.click / r.view * 100) : 0, 
+                cpc: r.click > 0 ? (r.cost / r.click) : 0, 
+                roas: r.cost > 0 ? (r.amt / r.cost * 100) : 0,
+                pCtr: r.pView > 0 ? (r.pClick / r.pView * 100) : 0,
+                pCpc: r.pClick > 0 ? (r.pCost / r.pClick) : 0,
+                pRoas: r.pCost > 0 ? (r.pAmt / r.pCost * 100) : 0
+            };
+        });
+
+        aggList.sort((a,b) => {
+            if(sDir === 'desc') {
+                return b[sKey] > a[sKey] ? 1 : -1;
+            } else {
+                return a[sKey] > b[sKey] ? 1 : -1;
+            }
+        });
+        
+        const getDiff = (cur, pre) => {
+            if(pre === 0 || pre === null || pre === undefined) return '';
+            const d = ((cur - pre) / pre * 100).toFixed(0);
+            if(Math.abs(d) < 0.5) return ''; // 0.5% 미만 변화는 표시 안함
+            if(d > 0) return `<span class="diff up">(▲${d}%)</span>`;
+            if(d < 0) return `<span class="diff down">(▼${Math.abs(d)}%)</span>`;
+            return '';
+        };
+
+        document.getElementById('tableBody').innerHTML = aggList.map(r => `
+            <tr onclick="viewDetail('${r.mat}')" style="cursor:pointer;">
+                <td><img src="${r.pImg}" class="img-thumb" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
+                <td class="col-campaign" style="color:#2b6cb0;" title="${r.cp}">${r.cp}</td>
+                <td class="col-adgroup" style="color:#c05621;" title="${r.gr}">${r.gr}</td>
+                <td class="col-product" title="${r.pName}"><b>${r.pName}</b>${r.isG?'<span class="badge-group">그룹</span>':''}</td>
+                <td>${r.cost.toLocaleString()}${getDiff(r.cost, r.pCost)}</td>
+                <td>${r.view.toLocaleString()}${getDiff(r.view, r.pView)}</td>
+                <td>${r.click.toLocaleString()}${getDiff(r.click, r.pClick)}</td>
+                <td>${r.ctr.toFixed(2)}%${getDiff(r.ctr, r.pCtr)}</td>
+                <td>${Math.round(r.cpc).toLocaleString()}${getDiff(r.cpc, r.pCpc)}</td>
+                <td>${r.cv}${getDiff(r.cv, r.pCv)}</td>
+                <td style="font-weight:bold">${r.amt.toLocaleString()}${getDiff(r.amt, r.pAmt)}</td>
+                <td style="color:green; font-weight:bold;">${r.roas.toFixed(0)}%${getDiff(r.roas, r.pRoas)}</td>
+            </tr>`).join('');
+    }
+
+    function resort(k) { 
+        sKey = k; 
+        sDir = sDir === 'desc' ? 'asc' : 'desc'; 
+        refresh(); 
+    }
+
+    function viewDetail(mat) {
+        activeMat = mat;
+        document.getElementById('detailSection').style.display = 'block';
+        document.getElementById('detailTitle').innerText = `[전체 기간] ${pMap[mat]?.name || mat}`;
+        
+        let th = '';
+        for(let k in metricNames) {
+            th += `<button class="tab-btn ${metric===k?'active':''}" onclick="setMetric('${k}')">${metricNames[k]}</button>`;
+        }
+        document.getElementById('tabArea').innerHTML = th;
+        
+        drawCharts();
+        setTimeout(() => {
+            document.getElementById('detailSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }
+
+    function setMetric(m) { 
+        metric = m; 
+        drawCharts();
+    }
+
+    function drawCharts() {
+        const filteredData = raw.filter(d => d.mat === activeMat);
+        
+        // 일별 집계
+        const dayMap = {};
+        filteredData.forEach(d => {
+            if(!dayMap[d.date]) dayMap[d.date] = { date: d.date, cost:0, view:0, click:0, cv:0, amt:0 };
+            dayMap[d.date].cost += d.cost; 
+            dayMap[d.date].view += d.view; 
+            dayMap[d.date].click += d.click; 
+            dayMap[d.date].cv += d.cv; 
+            dayMap[d.date].amt += d.amt;
+        });
+        
+        const dData = Object.values(dayMap).sort((a,b) => a.date.localeCompare(b.date));
+        
+        // 주별 집계
+        const wMap = {};
+        filteredData.forEach(d => {
+            if(!wMap[d.week]) wMap[d.week] = { cost:0, view:0, click:0, cv:0, amt:0 };
+            wMap[d.week].cost += d.cost; 
+            wMap[d.week].view += d.view; 
+            wMap[d.week].click += d.click; 
+            wMap[d.week].cv += d.cv; 
+            wMap[d.week].amt += d.amt;
+        });
+
+        const getValue = (o) => {
+            if(metric === 'ctr') return o.view > 0 ? (o.click / o.view * 100) : 0;
+            if(metric === 'cvr') return o.click > 0 ? (o.cv / o.click * 100) : 0;
+            if(metric === 'roas') return o.cost > 0 ? (o.amt / o.cost * 100) : 0;
+            if(metric === 'cpc') return o.click > 0 ? (o.cost / o.click) : 0;
+            return o[metric] || 0;
+        };
+
+        const formatValue = (val) => {
+            if(['ctr', 'cvr', 'roas'].includes(metric)) return val.toFixed(1) + '%';
+            return Math.round(val).toLocaleString();
+        };
+
+        // 통계 렌더링 함수
+        const renderStats = (id, values, prefix) => {
+            if(values.length === 0) {
+                document.getElementById(id).innerHTML = '';
+                return;
+            }
+            const max = Math.max(...values);
+            const min = Math.min(...values);
+            const avg = values.reduce((a,b)=>a+b,0) / values.length;
+            
+            document.getElementById(id).innerHTML = `
+                <div class="stat-item"><div class="stat-label">${prefix} 최고</div><div class="stat-value max">${formatValue(max)}</div></div>
+                <div class="stat-item"><div class="stat-label">${prefix} 최저</div><div class="stat-value min">${formatValue(min)}</div></div>
+                <div class="stat-item"><div class="stat-label">${prefix} 평균</div><div class="stat-value">${formatValue(avg)}</div></div>
+            `;
+        };
+
+        // 일별 차트
+        if(dChart) dChart.destroy();
+        const dayLabels = dData.map(d => d.date);
+        const dayValues = dData.map(d => getValue(d));
+        
+        renderStats('dayStats', dayValues, '일'); // 일별 통계 표시
+
+        dChart = new Chart(document.getElementById('dayChart'), {
+            type: 'line',
+            data: {
+                labels: dayLabels,
+                datasets: [{
+                    label: metricNames[metric],
+                    data: dayValues,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: '#3498db',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: { display: false },
+                    datalabels: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        titleFont: { size: 13 },
+                        bodyFont: { size: 14, weight: 'bold' },
+                        callbacks: {
+                            label: (context) => metricNames[metric] + ': ' + formatValue(context.parsed.y)
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => formatValue(value)
+                        },
+                        grid: { color: '#f0f0f0' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // 최근 4주만 필터링
+        const weekKeys = Object.keys(wMap).sort().slice(-4);
+        const weekValues = weekKeys.map(k => getValue(wMap[k]));
+        
+        renderStats('weekStats', weekValues, '주'); // 주별 통계 표시
+        
+        // 최근 주는 진한 파란색, 나머지는 연한 하늘색 파스텔톤
+        const weekColors = weekKeys.map((k, idx) => 
+            idx === weekKeys.length - 1 ? '#5DADE2' : '#D6EAF8'
+        );
+        
+        // 주별 차트
+        if(wChart) wChart.destroy();
+        wChart = new Chart(document.getElementById('weekChart'), {
+            type: 'bar',
+            data: {
+                labels: weekKeys,
+                datasets: [{
+                    label: metricNames[metric],
+                    data: weekValues,
+                    backgroundColor: weekColors,
+                    borderColor: '#fff',
+                    borderWidth: 2,
+                    datalabels: {
+                        anchor: 'center',
+                        align: 'center',
+                        color: '#2c3e50',
+                        font: { weight: 'bold', size: 13 },
+                        formatter: (value) => formatValue(value)
+                    }
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        titleFont: { size: 13 },
+                        bodyFont: { size: 14, weight: 'bold' },
+                        callbacks: {
+                            label: (context) => metricNames[metric] + ': ' + formatValue(context.parsed.y)
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => formatValue(value)
+                        },
+                        grid: { color: '#f0f0f0' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
   </script>
 </body>
 </html>
