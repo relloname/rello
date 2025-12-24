@@ -6,6 +6,7 @@
     <title>마케팅 성과 종합 리포트 (4주)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; background: #f5f5f5; padding: 20px; }
@@ -90,6 +91,33 @@
         /* 순위 분석 스타일 */
         .rank-heatmap-table th, .rank-heatmap-table td { text-align: center; border: 1px solid #eee; padding: 8px; font-size: 11px; }
         .rank-heatmap-table th { background: #f8f9fa; font-weight: bold; }
+        
+        /* Drag and drop upload styles */
+        .upload-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .drop-zone { border: 2px dashed #007bff; border-radius: 8px; padding: 20px; text-align: center; background: #f8f9fa; transition: all 0.3s; cursor: pointer; position: relative; }
+        .drop-zone:hover { background: #e7f3ff; border-color: #0056b3; }
+        .drop-zone.dragover { background: #d4edff; border-color: #0056b3; }
+        .drop-zone.uploaded { border-color: #28a745; background: #d4edda; }
+        .drop-zone-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #333; }
+        .drop-zone-hint { font-size: 11px; color: #666; }
+        .drop-zone-status { font-size: 12px; margin-top: 8px; color: #28a745; font-weight: bold; }
+        .drop-zone input[type="file"] { display: none; }
+        
+        /* Sticky total rows */
+        .sticky-total-row { position: sticky; top: 42px; z-index: 9; background-color: #e3f2fd !important; }
+        .sticky-total-row.row-0 { top: 42px; }
+        .sticky-total-row.row-1 { top: 84px; }
+        .sticky-total-row.row-2 { top: 126px; }
+        
+        /* TOP 10 tables for Rank Analysis */
+        .top10-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .top10-table-wrapper { border: 1px solid #ddd; border-radius: 6px; overflow: hidden; background: white; }
+        .top10-title { background: #007bff; color: white; padding: 10px; font-size: 13px; font-weight: bold; text-align: center; }
+        .top10-table { width: 100%; font-size: 11px; }
+        .top10-table th { background: #f8f9fa; padding: 6px; text-align: left; font-size: 11px; border-bottom: 1px solid #ddd; }
+        .top10-table td { padding: 6px; border-bottom: 1px solid #f0f0f0; text-align: left; }
+        .top10-table td:first-child { font-weight: bold; color: #007bff; }
+        .top10-table td:last-child { text-align: right; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -108,6 +136,7 @@
         <button class="tab-btn" onclick="switchTab(event, 'campaign')">🎯 캠페인 분석</button>
         <button class="tab-btn" onclick="switchTab(event, 'adgroup')">🧩 광고그룹 분석</button>
         <button class="tab-btn" onclick="switchTab(event, 'keyword')">🔍 키워드 분석</button>
+        <button class="tab-btn" onclick="switchTab(event, 'creative')">🎨 소재 분석</button>
         <button class="tab-btn" onclick="switchTab(event, 'media')">📰 매체별 분석</button>
         <button class="tab-btn" onclick="switchTab(event, 'efficiency')">⚡ 효율분석</button>
         <button class="tab-btn" onclick="switchTab(event, 'cpc')">💲 CPC 분석</button>
@@ -121,22 +150,39 @@
                 <span>📤 데이터 업로드</span>
             </div>
             <div class="info-box">
-                💡 4주간 Naver 광고 보고서 CSV/XLSX 파일 2개를 업로드하세요.<br>
-                • 파일1 (RAW): 일별/주별, 시간대/요일 포함 (A~O 열)<br>
-                • 파일2 (RAW2): 일별/주별, 검색어 포함 (A~O 열, 검색/콘텐츠 매체 포함)<br>
-                두 파일 모두 2행부터 데이터가 시작됩니다.
+                💡 4개의 파일을 업로드하세요 (드래그 앤 드롭 또는 클릭하여 파일 선택):<br>
+                • RAW (CSV/XLSX): 일별/주별, 시간대/요일 포함 데이터<br>
+                • Search Query (CSV/XLSX): 검색어별 성과 데이터<br>
+                • Creative (CSV): 소재별 성과 데이터<br>
+                • Product Info (TSV): 상품 정보 데이터
             </div>
-            <div class="controls">
-                <label>RAW (일/주별): <input type="file" id="fileInputRaw" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw')"></label>
-                <label>RAW2 (검색어): <input type="file" id="fileInputRaw2" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw2')"></label>
-            </div>
-            <div id="uploadStatus" class="status"></div>
-            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 4px;">
-                <strong>📊 업로드된 데이터 통계 (요약):</strong>
-                <div id="uploadStats" style="margin-top: 15px; color: #666; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
-                    <div>아직 데이터가 없습니다.</div>
+            <div class="upload-grid">
+                <div class="drop-zone" id="dropZoneRaw" onclick="document.getElementById('fileInputRaw').click()">
+                    <div class="drop-zone-title">📊 RAW</div>
+                    <div class="drop-zone-hint">CSV/XLSX 파일을 드래그하거나 클릭</div>
+                    <div class="drop-zone-status" id="statusRaw"></div>
+                    <input type="file" id="fileInputRaw" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw')">
+                </div>
+                <div class="drop-zone" id="dropZoneRaw2" onclick="document.getElementById('fileInputRaw2').click()">
+                    <div class="drop-zone-title">🔍 Search Query</div>
+                    <div class="drop-zone-hint">CSV/XLSX 파일을 드래그하거나 클릭</div>
+                    <div class="drop-zone-status" id="statusRaw2"></div>
+                    <input type="file" id="fileInputRaw2" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw2')">
+                </div>
+                <div class="drop-zone" id="dropZoneCreative" onclick="document.getElementById('fileInputCreative').click()">
+                    <div class="drop-zone-title">🎨 Creative</div>
+                    <div class="drop-zone-hint">CSV 파일을 드래그하거나 클릭</div>
+                    <div class="drop-zone-status" id="statusCreative"></div>
+                    <input type="file" id="fileInputCreative" accept=".csv" onchange="handleUpload(event, 'creative')">
+                </div>
+                <div class="drop-zone" id="dropZoneProduct" onclick="document.getElementById('fileInputProduct').click()">
+                    <div class="drop-zone-title">📦 Product Info</div>
+                    <div class="drop-zone-hint">TSV 파일을 드래그하거나 클릭</div>
+                    <div class="drop-zone-status" id="statusProduct"></div>
+                    <input type="file" id="fileInputProduct" accept=".tsv" onchange="handleUpload(event, 'product')">
                 </div>
             </div>
+            <div id="uploadStatus" class="status"></div>
         </div>
     </div>
 
@@ -187,6 +233,13 @@
             <div class="section-title">
                 <span>🏆 순위 분석</span>
             </div>
+            
+            <!-- TOP 10 Search Terms -->
+            <div style="margin-bottom:30px; background:#fff; border:1px solid #ddd; padding:20px; border-radius:8px;">
+                <h3 style="margin-bottom:15px;">🔝 검색어 TOP 10</h3>
+                <div id="top10Container" class="top10-grid"></div>
+            </div>
+            
             <div class="rank-panel" style="margin-bottom:20px; background:#fff; border:1px solid #ddd; padding:20px; border-radius:8px;">
                 <h3>📉 검색어별 순위 추이 (최근 14일)</h3>
                 <div class="controls" style="margin-top:10px;">
@@ -365,7 +418,46 @@
         </div>
     </div>
 
-    <!-- TAB 6: Media -->
+    <!-- TAB 6: Creative Analysis -->
+    <div id="creative" class="tab-content">
+        <div class="section" id="section-creative">
+            <div class="section-title">
+                <span>🎨 소재 분석 (Creative Analysis)</span>
+            </div>
+            <div class="controls">
+                <input class="text-col" type="text" id="creativeProductSearch" placeholder="상품명 검색" onkeyup="updateCreativeTable()">
+                <select id="creativeCampaignFilter" onchange="updateCreativeTable()"><option value="">캠페인 전체</option></select>
+                <select id="creativeAdgroupFilter" onchange="updateCreativeTable()"><option value="">광고그룹 전체</option></select>
+                <button class="danger" onclick="resetCreative()">초기화</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="creativeTable">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable('creativeTable', 0)">순위</th>
+                        <th onclick="sortTable('creativeTable', 1)">이미지</th>
+                        <th onclick="sortTable('creativeTable', 2)">캠페인</th>
+                        <th onclick="sortTable('creativeTable', 3)">광고그룹</th>
+                        <th onclick="sortTable('creativeTable', 4)">상품명</th>
+                        <th onclick="sortTable('creativeTable', 5)" class="number">광고비</th>
+                        <th onclick="sortTable('creativeTable', 6)" class="number">노출수</th>
+                        <th onclick="sortTable('creativeTable', 7)" class="number">클릭수</th>
+                        <th onclick="sortTable('creativeTable', 8)" class="number">클릭율</th>
+                        <th onclick="sortTable('creativeTable', 9)" class="number">CPC</th>
+                        <th onclick="sortTable('creativeTable', 10)" class="number">전환수</th>
+                        <th onclick="sortTable('creativeTable', 11)" class="number">매출액</th>
+                        <th onclick="sortTable('creativeTable', 12)" class="number">ROAS</th>
+                    </tr>
+                    </thead>
+                    <tbody id="creativeBody">
+                    <tr><td colspan="13" class="no-data">Creative 및 Product 파일을 업로드해주세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 7: Media -->
     <div id="media" class="tab-content">
         <div class="section" id="section-media">
             <div class="section-title">
@@ -640,6 +732,8 @@
 /* ============ 데이터/상수 ============ */
 let rawRows = [];
 let raw2Rows = [];
+let creativeRows = [];
+let productMap = {};
 let weeks = [];
 let currentWeekData = [];
 let previousWeekData = [];
@@ -674,6 +768,12 @@ const getChangeRate = (cur, prev) => {
     return ((cur - prev) / prev) * 100;
 };
 const badge = r => `<span class="${r>=0?'delta-up':'delta-down'}">${r>=0?'+':''}${r.toFixed(1)}%</span>`;
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 function showStatus(msg, type) { const s=document.getElementById('uploadStatus'); s.textContent=msg; s.className='status '+type; s.style.display='block'; }
 function parseCSVLine(line){ const res=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const c=line[i], n=line[i+1]; if(c==='"'){ if(inQ&&n==='"'){cur+='"'; i++;} else inQ=!inQ; } else if(c===',' && !inQ){ res.push(cur.trim()); cur=''; } else cur+=c; } res.push(cur.trim()); return res; }
 function switchTab(e, tabName) {
@@ -741,13 +841,116 @@ function handleUpload(ev, kind){
     const reader=new FileReader();
     reader.onload=e=>{
         try{
-            if(file.name.endsWith('.csv')) parseCSV(e.target.result,kind);
-            else parseXLSX(e.target.result,kind);
-            showStatus(`✅ ${kind.toUpperCase()} 로드 완료: ${kind==='raw'?rawRows.length:raw2Rows.length}행`,'success');
-            processData();
-        }catch(err){ console.error(err); showStatus('❌ 오류: '+err.message,'error'); }
+            if(kind==='product'){
+                parseTSV(e.target.result, kind);
+            } else if(kind==='creative'){
+                parseCreativeCSV(e.target.result, kind);
+            } else if(file.name.endsWith('.csv')) {
+                parseCSV(e.target.result,kind);
+            } else {
+                parseXLSX(e.target.result,kind);
+            }
+            
+            // Update status
+            const statusEl = document.getElementById('status' + kind.charAt(0).toUpperCase() + kind.slice(1));
+            const dropZoneEl = document.getElementById('dropZone' + kind.charAt(0).toUpperCase() + kind.slice(1));
+            if(statusEl) {
+                statusEl.textContent = '✅ 업로드 완료';
+                statusEl.style.display = 'block';
+            }
+            if(dropZoneEl) {
+                dropZoneEl.classList.add('uploaded');
+            }
+            
+            const counts = {
+                raw: rawRows.length,
+                raw2: raw2Rows.length,
+                creative: creativeRows.length,
+                product: Object.keys(productMap).length
+            };
+            showStatus(`✅ ${kind.toUpperCase()} 로드 완료: ${counts[kind]}${kind==='product'?'개':'행'}`, 'success');
+            
+            if(rawRows.length > 0 || raw2Rows.length > 0) {
+                processData();
+            }
+            if(creativeRows.length > 0 && Object.keys(productMap).length > 0) {
+                updateCreativeTable();
+            }
+        }catch(err){ 
+            console.error(err); 
+            showStatus('❌ 오류: '+err.message,'error'); 
+        }
     };
     reader.readAsArrayBuffer(file);
+}
+
+function parseTSV(buf, kind){
+    const text = new TextDecoder('utf-8').decode(buf);
+    const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+    productMap = {};
+    for(let i=1; i<lines.length; i++){
+        const parts = lines[i].split('\t');
+        if(parts.length >= 16){
+            const matId = parts[2];
+            const productName = parts[13];
+            const imageUrl = parts[14];
+            if(matId) {
+                productMap[matId.trim()] = {
+                    name: productName || '상품명 없음',
+                    image: imageUrl || ''
+                };
+            }
+        }
+    }
+}
+
+function parseCreativeCSV(buf, kind){
+    let text;
+    try {
+        // Try EUC-KR encoding first
+        text = new TextDecoder('EUC-KR').decode(buf);
+    } catch(e) {
+        // Fallback to UTF-8 if EUC-KR is not supported
+        console.warn('EUC-KR not supported, using UTF-8');
+        text = new TextDecoder('utf-8').decode(buf);
+    }
+    Papa.parse(text, {
+        skipEmptyLines: true,
+        complete: (result) => {
+            if(result.errors && result.errors.length > 0) {
+                console.error('CSV parsing errors:', result.errors);
+                showStatus('❌ CSV 파싱 중 오류 발생', 'error');
+                return;
+            }
+            if(!result.data || result.data.length === 0) {
+                console.error('No data found in CSV');
+                showStatus('❌ CSV 파일에 데이터가 없습니다', 'error');
+                return;
+            }
+            const rows = result.data;
+            const headRow = rows.findIndex(r => r && r.join && r.join(',').includes('캠페인유형'));
+            if(headRow === -1) {
+                console.error('Header row not found');
+                showStatus('❌ CSV 파일 형식이 올바르지 않습니다', 'error');
+                return;
+            }
+            creativeRows = rows.slice(headRow + 1)
+                .filter(r => r && r[0] === '쇼핑검색')
+                .map(r => ({
+                    campaignType: r[0],
+                    campaign: r[1],
+                    adgroup: r[2],
+                    material: r[3] ? r[3].trim() : '',
+                    date: r[6],
+                    week: r[7],
+                    cost: parseNumber(r[8]),
+                    impressions: parseNumber(r[9]),
+                    clicks: parseNumber(r[10]),
+                    conversions: parseNumber(r[11]),
+                    revenue: parseNumber(r[12])
+                }));
+        }
+    });
 }
 function parseCSV(buf, kind){
     const text=new TextDecoder('utf-8').decode(buf);
@@ -855,6 +1058,7 @@ function updateAll(){
     updateDeviceTables();
     createCharts();
     updateStackedChart();
+    updateRankTop10();
 }
 
 /* ============ 카드(성과 요약) ============ */
@@ -1292,13 +1496,13 @@ function generateTotalRowHTML(list, colSpan, typeKey){
     const curCells =keys.map(k=>val(k, cur, prev)).join('');
     const avgCells =keys.map(k=>valNoBadge(k, avg4)).join('');
     const labelColSpan=(typeKey==='adgroup')?4:(typeKey==='keyword'?4:3);
-    const prevLabel=weeks[1]?`TOTAL (${weeks[1]})`:'TOTAL (지난 데이터)';
-    const curLabel =weeks[0]?`TOTAL (${weeks[0]})`:'TOTAL';
-    const avgLabel ='TOTAL (4주 평균)';
+    const prevLabel=weeks[1]?`TOTAL (${weeks[1]} Week)`:'TOTAL (Previous Week)';
+    const curLabel =weeks[0]?`TOTAL (${weeks[0]} Week)`:'TOTAL (Latest Week)';
+    const avgLabel ='TOTAL (4 Weeks Avg)';
     return `
-        <tr class="total-row" style="background:#dff1ff;"><td colspan="${labelColSpan}" style="text-align:center;">${avgLabel}</td>${avgCells}</tr>
-        <tr class="total-row"><td colspan="${labelColSpan}" style="text-align:center;">${curLabel}</td>${curCells}</tr>
-        <tr class="prev-total-row"><td colspan="${labelColSpan}" style="text-align:center;">${prevLabel}</td>${prevCells}</tr>
+        <tr class="total-row sticky-total-row row-0" style="background:#dff1ff;"><td colspan="${labelColSpan}" style="text-align:center;">${avgLabel}</td>${avgCells}</tr>
+        <tr class="prev-total-row sticky-total-row row-1" style="background:#fff3cd;"><td colspan="${labelColSpan}" style="text-align:center;">${prevLabel}</td>${prevCells}</tr>
+        <tr class="total-row sticky-total-row row-2" style="background:#d4edda;"><td colspan="${labelColSpan}" style="text-align:center;">${curLabel}</td>${curCells}</tr>
     `;
 }
 
@@ -1488,7 +1692,7 @@ function updateKeywordTable(reset){
             <td class="number">${formatCardValue('cvr', it.m.cvr)} <span class="badge-mini">${badge(getChangeRate(it.m.cvr, it.pm.cvr||0))}</span></td>
             <td class="number">${formatCardValue('revenue', it.m.revenue)} <span class="badge-mini">${badge(getChangeRate(it.m.revenue, it.pm.revenue||0))}</span></td>
             <td class="number">${formatCardValue('cpa', it.m.cpa)} <span class="badge-mini">${badge(getChangeRate(it.m.cpa, it.pm.cpa||0))}</span></td>
-            <td class="number" style="color:#111;">${formatCardValue('roas', it.m.roas)}</td>
+            <td class="number" style="color:#111; font-weight:bold;">${formatCardValue('roas', it.m.roas)} <span class="badge-mini">${badge(getChangeRate(it.m.roas, it.pm.roas||0))}</span></td>
         </tr>`;
         html+=addDetailRow(14,it.keyword,it.m,it.pm,prevLabel,it.avgM);
     });
@@ -1738,6 +1942,243 @@ function resetKeyword(){ document.getElementById('keywordSearch').value=''; docu
 function resetMedia(){ document.getElementById('mediaFilter').value=''; document.getElementById('mediaCampaignFilter').value=''; document.getElementById('mediaCampaignTypeFilter').value=''; document.getElementById('mediaAdgroupFilter').value=''; document.getElementById('mediaDeviceFilter').value=''; document.getElementById('standardROAS_MEDIA').value=''; clearROASFilter('mediaBody'); updateMediaTable(); }
 function resetEfficiency(){ document.getElementById('brandExclude').value=''; document.getElementById('efficiencyCampaignTypeFilter').value=''; document.getElementById('efficiencyCampaignFilter').value=''; document.getElementById('efficiencyAdgroupFilter').value=''; document.getElementById('filterCostMin').value=''; document.getElementById('filterConvMin').value=''; document.getElementById('filterROASMin').value=''; document.getElementById('filterCPAMin').value=''; updateEfficiencyAnalysis(); }
 function resetCPC(){ document.getElementById('cpcBrandExclude').value=''; document.getElementById('cpcCampaignTypeFilter').value=''; document.getElementById('cpcCampaignFilter').value=''; document.getElementById('cpcAdgroupFilter').value=''; document.getElementById('cpcCostMin').value=''; document.getElementById('cpcConvMin').value=''; document.getElementById('cpcROASMin').value=''; document.getElementById('cpcCPAMin').value=''; document.getElementById('cpcChangeThreshold').value=''; updateCPCAnalysis(); }
+function resetCreative(){ document.getElementById('creativeProductSearch').value=''; document.getElementById('creativeCampaignFilter').value=''; document.getElementById('creativeAdgroupFilter').value=''; updateCreativeTable(); }
+
+/* ============ Creative Analysis ============ */
+function updateCreativeTable(){
+    const tbody = document.getElementById('creativeBody');
+    if(creativeRows.length === 0 || Object.keys(productMap).length === 0) {
+        tbody.innerHTML = '<tr><td colspan="13" class="no-data">Creative 및 Product 파일을 업로드해주세요.</td></tr>';
+        return;
+    }
+    
+    const search = (document.getElementById('creativeProductSearch').value || '').toLowerCase();
+    const campFilter = document.getElementById('creativeCampaignFilter').value;
+    const agFilter = document.getElementById('creativeAdgroupFilter').value;
+    
+    // Get date ranges
+    const allDates = [...new Set(creativeRows.map(d=>d.date))].sort().reverse();
+    const curDates = allDates.slice(0, 7);
+    const preDates = allDates.slice(7, 14);
+    
+    // Aggregate by material
+    const agg = {};
+    creativeRows.forEach(r => {
+        if(campFilter && r.campaign !== campFilter) return;
+        if(agFilter && r.adgroup !== agFilter) return;
+        
+        const matId = r.material;
+        if(!agg[matId]) {
+            agg[matId] = {
+                campaign: r.campaign,
+                adgroup: r.adgroup,
+                material: matId,
+                cost: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0,
+                pCost: 0, pImpressions: 0, pClicks: 0, pConversions: 0, pRevenue: 0
+            };
+        }
+        
+        if(curDates.includes(r.date)) {
+            agg[matId].cost += r.cost;
+            agg[matId].impressions += r.impressions;
+            agg[matId].clicks += r.clicks;
+            agg[matId].conversions += r.conversions;
+            agg[matId].revenue += r.revenue;
+        }
+        if(preDates.includes(r.date)) {
+            agg[matId].pCost += r.cost;
+            agg[matId].pImpressions += r.impressions;
+            agg[matId].pClicks += r.clicks;
+            agg[matId].pConversions += r.conversions;
+            agg[matId].pRevenue += r.revenue;
+        }
+    });
+    
+    // Convert to array with calculated metrics
+    const list = Object.values(agg).map(r => {
+        const product = productMap[r.material] || { name: '매칭 실패', image: '' };
+        const productName = product.name;
+        
+        // Filter by product name
+        if(search && productName.toLowerCase().indexOf(search) === -1) return null;
+        
+        const m = calcMetrics([r]);
+        const pm = calcMetrics([{
+            cost: r.pCost,
+            impressions: r.pImpressions,
+            clicks: r.pClicks,
+            conversions: r.pConversions,
+            revenue: r.pRevenue
+        }]);
+        
+        return {
+            campaign: r.campaign,
+            adgroup: r.adgroup,
+            material: r.material,
+            productName,
+            image: product.image,
+            m, pm
+        };
+    }).filter(Boolean).sort((a,b) => b.m.conversions - a.m.conversions);
+    
+    // Render table
+    let html = list.map((it, idx) => {
+        const imgSrc = it.image || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E';
+        // Validate image URL (allow http, https, data protocols)
+        const isValidImageUrl = /^(https?:\/\/|data:image\/)/.test(imgSrc);
+        const safeImgSrc = isValidImageUrl ? imgSrc : 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E';
+        // Escape HTML to prevent XSS
+        const escapedCampaign = escapeHtml(it.campaign);
+        const escapedAdgroup = escapeHtml(it.adgroup);
+        const escapedProductName = escapeHtml(it.productName);
+        return `<tr>
+            <td><span class="rank-badge">${idx+1}</span></td>
+            <td><img src="${safeImgSrc}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
+            <td class="text-col" title="${escapedCampaign}">${escapedCampaign}</td>
+            <td class="text-col" title="${escapedAdgroup}">${escapedAdgroup}</td>
+            <td style="text-align:left; max-width:250px; overflow:hidden; text-overflow:ellipsis;" title="${escapedProductName}">${escapedProductName}</td>
+            <td class="number">${formatCardValue('cost', it.m.cost)} <span class="badge-mini">${badge(getChangeRate(it.m.cost, it.pm.cost||0))}</span></td>
+            <td class="number">${formatCardValue('impressions', it.m.impressions)} <span class="badge-mini">${badge(getChangeRate(it.m.impressions, it.pm.impressions||0))}</span></td>
+            <td class="number">${formatCardValue('clicks', it.m.clicks)} <span class="badge-mini">${badge(getChangeRate(it.m.clicks, it.pm.clicks||0))}</span></td>
+            <td class="number">${formatCardValue('ctr', it.m.ctr)} <span class="badge-mini">${badge(getChangeRate(it.m.ctr, it.pm.ctr||0))}</span></td>
+            <td class="number">${formatCardValue('cpc', it.m.cpc)} <span class="badge-mini">${badge(getChangeRate(it.m.cpc, it.pm.cpc||0))}</span></td>
+            <td class="number">${formatCardValue('conversions', it.m.conversions)} <span class="badge-mini">${badge(getChangeRate(it.m.conversions, it.pm.conversions||0))}</span></td>
+            <td class="number">${formatCardValue('revenue', it.m.revenue)} <span class="badge-mini">${badge(getChangeRate(it.m.revenue, it.pm.revenue||0))}</span></td>
+            <td class="number" style="color:#111; font-weight:bold;">${formatCardValue('roas', it.m.roas)} <span class="badge-mini">${badge(getChangeRate(it.m.roas, it.pm.roas||0))}</span></td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="13" class="no-data">검색 결과가 없습니다.</td></tr>';
+    
+    tbody.innerHTML = html;
+    
+    // Populate filters if not yet populated
+    if(document.getElementById('creativeCampaignFilter').options.length === 1){
+        const campaigns = [...new Set(creativeRows.map(r=>r.campaign))].sort();
+        campaigns.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            document.getElementById('creativeCampaignFilter').appendChild(opt);
+        });
+        
+        const adgroups = [...new Set(creativeRows.map(r=>r.adgroup))].sort();
+        adgroups.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a;
+            opt.textContent = a;
+            document.getElementById('creativeAdgroupFilter').appendChild(opt);
+        });
+    }
+}
+
+/* ============ TOP 10 Search Terms ============ */
+function updateRankTop10() {
+    if(raw2Rows.length === 0) return;
+    
+    // Aggregate by keyword
+    const keywordMap = {};
+    raw2Rows.forEach(r => {
+        const kw = r.keyword || '미분류';
+        if(!keywordMap[kw]) {
+            keywordMap[kw] = { keyword: kw, cost: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0 };
+        }
+        keywordMap[kw].cost += r.cost;
+        keywordMap[kw].impressions += r.impressions;
+        keywordMap[kw].clicks += r.clicks;
+        keywordMap[kw].conversions += r.conversions;
+        keywordMap[kw].revenue += r.revenue;
+    });
+    
+    const keywords = Object.values(keywordMap);
+    
+    // Create 5 TOP 10 tables
+    const tables = [
+        { title: '💰 광고비 TOP 10', field: 'cost', formatter: v => formatMoney(v) + '원' },
+        { title: '👁️ 노출수 TOP 10', field: 'impressions', formatter: formatNum },
+        { title: '🖱️ 클릭수 TOP 10', field: 'clicks', formatter: formatNum },
+        { title: '🎯 전환수 TOP 10', field: 'conversions', formatter: formatNum },
+        { title: '💵 매출액 TOP 10', field: 'revenue', formatter: v => formatMoney(v) + '원' }
+    ];
+    
+    const container = document.getElementById('top10Container');
+    let html = '';
+    
+    tables.forEach(table => {
+        const sorted = [...keywords].sort((a, b) => b[table.field] - a[table.field]).slice(0, 10);
+        html += `
+            <div class="top10-table-wrapper">
+                <div class="top10-title">${table.title}</div>
+                <table class="top10-table">
+                    <tbody>
+                        ${sorted.map((kw, idx) => {
+                            const escapedKeyword = escapeHtml(kw.keyword);
+                            return `
+                            <tr>
+                                <td>${idx + 1}</td>
+                                <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapedKeyword}">${escapedKeyword}</td>
+                                <td>${table.formatter(kw[table.field])}</td>
+                            </tr>
+                        `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+/* ============ Drag and Drop for file upload ============ */
+function initDragAndDrop() {
+    const zones = ['Raw', 'Raw2', 'Creative', 'Product'];
+    zones.forEach(zone => {
+        const dropZone = document.getElementById('dropZone' + zone);
+        if(!dropZone) return;
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if(files.length > 0) {
+                const inputId = 'fileInput' + zone;
+                const input = document.getElementById(inputId);
+                if(input) {
+                    try {
+                        // Create a new DataTransfer to assign files
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(files[0]);
+                        input.files = dataTransfer.files;
+                        input.dispatchEvent(new Event('change'));
+                    } catch(e) {
+                        // Fallback for older browsers: trigger click to open file dialog
+                        console.warn('DataTransfer not supported, please click to upload');
+                        input.click();
+                    }
+                }
+            }
+        });
+    });
+}
+
+// Initialize drag and drop on page load
+document.addEventListener('DOMContentLoaded', () => {
+    initDragAndDrop();
+});
+
 </script>
 </body>
 </html>
