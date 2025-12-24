@@ -768,6 +768,12 @@ const getChangeRate = (cur, prev) => {
     return ((cur - prev) / prev) * 100;
 };
 const badge = r => `<span class="${r>=0?'delta-up':'delta-down'}">${r>=0?'+':''}${r.toFixed(1)}%</span>`;
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 function showStatus(msg, type) { const s=document.getElementById('uploadStatus'); s.textContent=msg; s.className='status '+type; s.style.display='block'; }
 function parseCSVLine(line){ const res=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const c=line[i], n=line[i+1]; if(c==='"'){ if(inQ&&n==='"'){cur+='"'; i++;} else inQ=!inQ; } else if(c===',' && !inQ){ res.push(cur.trim()); cur=''; } else cur+=c; } res.push(cur.trim()); return res; }
 function switchTab(e, tabName) {
@@ -899,7 +905,15 @@ function parseTSV(buf, kind){
 }
 
 function parseCreativeCSV(buf, kind){
-    const text = new TextDecoder('EUC-KR').decode(buf);
+    let text;
+    try {
+        // Try EUC-KR encoding first
+        text = new TextDecoder('EUC-KR').decode(buf);
+    } catch(e) {
+        // Fallback to UTF-8 if EUC-KR is not supported
+        console.warn('EUC-KR not supported, using UTF-8');
+        text = new TextDecoder('utf-8').decode(buf);
+    }
     Papa.parse(text, {
         skipEmptyLines: true,
         complete: (result) => {
@@ -1999,12 +2013,17 @@ function updateCreativeTable(){
     // Render table
     let html = list.map((it, idx) => {
         const imgSrc = it.image || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E';
+        // Escape HTML to prevent XSS
+        const escapedCampaign = escapeHtml(it.campaign);
+        const escapedAdgroup = escapeHtml(it.adgroup);
+        const escapedProductName = escapeHtml(it.productName);
+        const escapedImgSrc = escapeHtml(imgSrc);
         return `<tr>
             <td><span class="rank-badge">${idx+1}</span></td>
-            <td><img src="${imgSrc}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
-            <td class="text-col" title="${it.campaign}">${it.campaign}</td>
-            <td class="text-col" title="${it.adgroup}">${it.adgroup}</td>
-            <td style="text-align:left; max-width:250px; overflow:hidden; text-overflow:ellipsis;" title="${it.productName}">${it.productName}</td>
+            <td><img src="${escapedImgSrc}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
+            <td class="text-col" title="${escapedCampaign}">${escapedCampaign}</td>
+            <td class="text-col" title="${escapedAdgroup}">${escapedAdgroup}</td>
+            <td style="text-align:left; max-width:250px; overflow:hidden; text-overflow:ellipsis;" title="${escapedProductName}">${escapedProductName}</td>
             <td class="number">${formatCardValue('cost', it.m.cost)} <span class="badge-mini">${badge(getChangeRate(it.m.cost, it.pm.cost||0))}</span></td>
             <td class="number">${formatCardValue('impressions', it.m.impressions)} <span class="badge-mini">${badge(getChangeRate(it.m.impressions, it.pm.impressions||0))}</span></td>
             <td class="number">${formatCardValue('clicks', it.m.clicks)} <span class="badge-mini">${badge(getChangeRate(it.m.clicks, it.pm.clicks||0))}</span></td>
@@ -2077,13 +2096,16 @@ function updateRankTop10() {
                 <div class="top10-title">${table.title}</div>
                 <table class="top10-table">
                     <tbody>
-                        ${sorted.map((kw, idx) => `
+                        ${sorted.map((kw, idx) => {
+                            const escapedKeyword = escapeHtml(kw.keyword);
+                            return `
                             <tr>
                                 <td>${idx + 1}</td>
-                                <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${kw.keyword}">${kw.keyword}</td>
+                                <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapedKeyword}">${escapedKeyword}</td>
                                 <td>${table.formatter(kw[table.field])}</td>
                             </tr>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -2122,7 +2144,10 @@ function initDragAndDrop() {
                 const inputId = 'fileInput' + zone;
                 const input = document.getElementById(inputId);
                 if(input) {
-                    input.files = files;
+                    // Create a new DataTransfer to assign files
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(files[0]);
+                    input.files = dataTransfer.files;
                     input.dispatchEvent(new Event('change'));
                 }
             }
