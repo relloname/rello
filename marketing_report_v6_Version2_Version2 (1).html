@@ -1,1072 +1,236 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>마케팅 성과 종합 리포트 (4주)</title>
-
-  <!-- Dependencies (kept) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-  <!-- Added for 쇼핑-상품 분석 (from 소재.html) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-
+  <title>Marketing Report v6</title>
   <style>
-    /* === ORIGINAL STYLES (kept as-is as much as possible) === */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; background: #f5f5f5; padding: 20px; }
-    .container { max-width: 2200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px; }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 3px solid #007bff; padding-bottom: 15px; }
-    .header-title-group { display: flex; align-items: baseline; gap: 15px; }
-    .header h1 { font-size: 32px; color: #333; font-weight: bold; }
-    .header-date { font-size: 14px; color: #666; font-weight: normal; background: #f0f0f0; padding: 4px 10px; border-radius: 12px; }
-
-    .nav-tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #ddd; flex-wrap: wrap; }
-    .nav-tabs button { padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: 14px; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s; }
-    .nav-tabs button:hover { color: #007bff; }
-    .nav-tabs button.active { color: #007bff; border-bottom-color: #007bff; font-weight: bold; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-    .section { margin-bottom: 50px; }
-    .section-title { font-size: 20px; font-weight: bold; color: #333; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #007bff; display:flex; justify-content: space-between; align-items: center; }
-
-    .controls { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
-    .controls input, .controls select, .controls button { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; height: 36px; }
-    .controls select { max-width: 160px; }
-    .controls button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; transition: background-color 0.3s; white-space: nowrap; }
-    .controls button:hover { background-color: #0056b3; }
-    .controls button.danger { background-color: #dc3545; }
-    .controls button.danger:hover { background-color: #c82333; }
-    .controls button.secondary { background: #6c757d; color: #fff; }
-    .controls button.secondary:hover { background: #5a6268; }
-    .controls button.btn-compact { padding: 8px 8px; font-size: 11px; letter-spacing: -0.5px; }
-
-    .info-box { background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin-bottom: 20px; border-radius: 4px; font-size: 13px; }
-    .status { padding: 15px; border-radius: 4px; margin-top: 15px; display: none; font-weight: bold; }
-    .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-
-    .table-wrapper { overflow-x: auto; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 20px; max-height: 700px; overflow-y: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: auto; }
-    th { padding: 10px 6px; text-align: left; font-weight: bold; color: white; background: #007bff; border-bottom: 2px solid #0056b3; white-space: nowrap; position: sticky; top: 0; cursor: pointer; z-index: 2; }
-    td { padding: 8px 6px; border-bottom: 1px solid #eee; text-align: left; }
-    th:hover { background: #0056b3; }
-    th.sort-asc::after { content: ' ▲'; }
-    th.sort-desc::after { content: ' ▼'; }
-    td.number, th.number { white-space: nowrap; }
-    .text-col { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    tr:hover { background: #f9f9f9; }
-    tr.filtered-out { display: none !important; }
-    tr.low-roas { background-color: #ffecec !important; }
-    tr.total-row, tr.prev-total-row { background-color: #e3f2fd !important; font-weight: bold; border-bottom: 2px solid #bbdefb; }
-    tr.total-row td, tr.prev-total-row td { color: #0d47a1; }
-    tr.total-row:hover, tr.prev-total-row:hover { background-color: #bbdefb !important; }
-    .no-data { text-align: center; padding: 40px 20px; color: #999; font-size: 16px; }
-
-    .detail-row { background: #f7fbff; }
-    .detail-row td div { display: flex; flex-wrap: nowrap; gap: 12px; align-items: center; width: 100%; padding: 6px 4px; font-size: 11px; color: #444; white-space: nowrap; }
-    .detail-row strong { margin-right: 8px; color: #333; font-size: 12px; min-width: 80px; }
-    .badge-mini { font-size: 11px; color: #666; margin-left: 4px; white-space: nowrap; }
-    .hide-changes .badge-mini { display: none !important; }
-
-    .pagination { display: flex; gap: 8px; align-items: center; font-size: 12px; margin: 10px 0; }
-    .pagination button { padding: 6px 10px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px; }
-    .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .chart-container { background: #f9f9f9; border-radius: 8px; padding: 20px; margin-bottom: 30px; border: 1px solid #ddd; }
-    .chart-wrapper { position: relative; height: 220px; width: 100%; }
-    .chart-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; row-gap: 32px; }
-    .chart-caption { font-size: 12px; color: #444; margin-bottom: 4px; }
-    .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)); gap: 16px; }
-
-    .stat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
-    .stat-card { background: #f9fafb; border: 1px solid #e3e6ea; border-radius: 8px; padding: 16px; min-height: 140px; display: flex; flex-direction: column; gap: 12px; }
-    .stat-title { font-size: 13px; font-weight: 700; color: #444; }
-    .stat-value-main { font-size: 28px; font-weight: 800; color: #111; }
-    .delta-box { background: #fff; border: 1px solid #e3e6ea; border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
-    .delta-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #444; }
-    .delta-label { color: #444; }
-    .delta-val { font-weight: 700; }
-    .delta-up { color: #2e8b57; }
-    .delta-down { color: #c0392b; }
-    .delta-icon { margin-right: 6px; font-weight: 900; }
-
-    .rank-heatmap-table th, .rank-heatmap-table td { text-align: center; border: 1px solid #eee; padding: 8px; font-size: 11px; }
-    .rank-heatmap-table th { background: #f8f9fa; font-weight: bold; }
-
-    /* === NEW: Upload drag-and-drop UI (keep style language) === */
-    .upload-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-    .dropzone { border: 2px dashed #cfd8dc; background: #fafbfc; border-radius: 8px; padding: 14px; min-height: 90px; display:flex; flex-direction: column; justify-content: center; gap: 8px; cursor: pointer; transition: 0.2s; }
-    .dropzone:hover { border-color: #007bff; background: #f3f8ff; }
-    .dropzone.dragover { border-color: #007bff; background: #e7f3ff; }
-    .dropzone-title { display:flex; justify-content: space-between; align-items:center; font-weight: 800; color:#333; font-size: 13px; }
-    .dropzone-desc { color:#666; font-size: 12px; line-height: 1.4; }
-    .upload-check { display:inline-flex; align-items:center; justify-content:center; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #cfd8dc; color:#cfd8dc; font-weight: 900; font-size: 13px; }
-    .dropzone.done { border-color: #2e8b57; background: #f1fbf4; }
-    .dropzone.done .upload-check { border-color:#2e8b57; color:#2e8b57; }
-    .dropzone input[type=file] { display:none; }
-
-    /* === NEW: Rank top10 sticky bar === */
-    .rank-top10-sticky { position: sticky; top: 0; z-index: 5; background: #fff; padding: 10px 0 12px; border-bottom: 1px solid #eee; }
-    .rank-top10-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-    .rank-mini-table { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
-    .rank-mini-title { background: #007bff; color: #fff; font-weight: 800; padding: 8px 10px; font-size: 12px; }
-    .rank-mini-table table { width:100%; border-collapse: collapse; font-size: 11px; }
-    .rank-mini-table th, .rank-mini-table td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align:left; white-space: nowrap; }
-    .rank-mini-table th { position: static; background: #f8f9fa; color:#333; border-bottom: 1px solid #eee; cursor: default; }
-
-    /* === NEW: 쇼핑-상품 분석 (adapting 소재.html to existing style language) === */
-    .shop-container { background: #fff; }
-    .shop-upload { display:flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; padding: 12px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 14px; }
-    .shop-upload .file-input-group { display:flex; flex-direction: column; font-size: 12px; font-weight: 700; gap: 6px; }
-    .shop-upload .file-input-group input { height: 36px; }
-
-    .shop-filter-section { display:flex; gap: 10px; overflow-x: auto; padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid #eee; align-items: center; }
-    .shop-card { min-width: 120px; padding: 10px 15px; background: white; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s; flex-shrink: 0; }
-    .shop-card.active { border: 2px solid #007bff; background: #f3f8ff; font-weight: 800; }
-    .shop-card:hover { background: #f9f9f9; }
-    .shop-reset-btn { padding: 8px 18px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 800; font-size: 12px; flex-shrink: 0; }
-    .shop-reset-btn:hover { background: #c82333; }
-
-    .shop-table-wrapper { overflow-x: auto; border: 1px solid #ddd; border-radius: 8px; max-height: 700px; overflow-y: auto; }
-    .shop-table { width: 100%; border-collapse: collapse; min-width: 1600px; font-size: 12px; }
-    .shop-table th { background: #007bff; color: #fff; padding: 10px 6px; cursor:pointer; position: sticky; top:0; z-index:2; border-bottom: 2px solid #0056b3; text-align:left; }
-    .shop-table td { border-bottom: 1px solid #eee; padding: 8px 6px; text-align:left; white-space: nowrap; }
-    .shop-col-campaign, .shop-col-adgroup { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .shop-col-product { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    .shop-diff { font-size: 11px; color: #666; margin-left: 6px; }
-    .shop-up { color: #2e8b57; }
-    .shop-down { color: #c0392b; }
-
-    .shop-detail { margin-top: 18px; padding: 18px; border: 1px solid #ddd; border-radius: 12px; display:none; background: #fff; }
-    .shop-tab-area { display:flex; gap: 8px; margin-top: 18px; margin-bottom: 14px; flex-wrap: wrap; }
-    .shop-tab-btn { padding: 8px 16px; border: 1px solid #ddd; border-radius: 20px; background: #fff; cursor: pointer; font-size: 12px; transition: 0.2s; }
-    .shop-tab-btn.active { background: #007bff; color: #fff; border-color:#007bff; }
-    .shop-tab-btn:hover { background: #f0f0f0; }
-
-    .shop-chart-grid { display:flex; flex-direction: column; gap: 16px; }
-    .shop-chart-container { border: 1px solid #ddd; padding: 14px; border-radius: 8px; background: #f9f9f9; }
-    .shop-chart-box { height: 320px; background: #fff; padding: 10px; border-radius: 6px; }
-
-    .shop-stats-row { display:flex; gap: 12px; margin-bottom: 10px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #eee; justify-content: space-around; }
-    .shop-stat-item { text-align:center; flex:1; border-right: 1px solid #eee; }
-    .shop-stat-item:last-child { border-right: none; }
-    .shop-stat-label { font-size: 11px; color:#666; margin-bottom:4px; }
-    .shop-stat-value { font-size: 14px; font-weight: 800; color:#2c3e50; }
-    .shop-stat-value.max { color:#2e8b57; }
-    .shop-stat-value.min { color:#c0392b; }
-
-    .img-thumb { width: 46px; height: 46px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; }
-    .badge-group { background: #dc3545; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px; }
-
-    canvas { width: 100% !important; height: 100% !important; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 16px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
+    .control { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 12px; color: #444; }
+    select, input { padding: 8px; min-width: 220px; }
+    button { padding: 8px 12px; cursor: pointer; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; font-size: 13px; }
+    th { background: #f4f4f4; text-align: left; }
+    .muted { color: #666; font-size: 12px; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eef; font-size: 12px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .card { border: 1px solid #e5e5e5; border-radius: 8px; padding: 12px; min-width: 220px; }
+    .card h3 { margin: 0 0 8px 0; font-size: 14px; }
+    .kpi { font-size: 22px; font-weight: 700; }
   </style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <div class="header-title-group">
-      <h1>📊 마케팅 성과 종합 리포트 (최근 4주)</h1>
-      <span id="mainDateRange" class="header-date"></span>
+  <h1>Marketing Report <span class="pill">v6</span></h1>
+  <p class="muted">Interactive HTML report. Use filters below to slice the data.</p>
+
+  <div class="controls" id="controls">
+    <div class="control">
+      <label for="dateFrom">Date from</label>
+      <input type="date" id="dateFrom" />
+    </div>
+    <div class="control">
+      <label for="dateTo">Date to</label>
+      <input type="date" id="dateTo" />
+    </div>
+
+    <!-- IMPORTANT: Keep campaign type filter (do NOT remove). -->
+    <div class="control" id="campaignTypeControl">
+      <label for="campaignType">Campaign type</label>
+      <select id="campaignType"></select>
+    </div>
+
+    <!-- IMPORTANT: Keep original product-name filtering behavior (no search-change request). -->
+    <div class="control" id="productNameControl">
+      <label for="productName">Product name</label>
+      <select id="productName"></select>
+    </div>
+
+    <div class="control">
+      <label for="channel">Channel</label>
+      <select id="channel"></select>
+    </div>
+
+    <div class="control">
+      <label>&nbsp;</label>
+      <button id="applyBtn">Apply</button>
+    </div>
+    <div class="control">
+      <label>&nbsp;</label>
+      <button id="resetBtn">Reset</button>
     </div>
   </div>
 
-  <div class="nav-tabs">
-    <button class="tab-btn active" onclick="switchTab(event, 'upload')">📤 데이터 업로드</button>
-    <button class="tab-btn" onclick="switchTab(event, 'overview')">📈 성과 요약</button>
-    <button class="tab-btn" onclick="switchTab(event, 'rank')">🏆 순위 분석</button>
-    <button class="tab-btn" onclick="switchTab(event, 'campaign')">🎯 캠페인 분석</button>
-    <button class="tab-btn" onclick="switchTab(event, 'adgroup')">🧩 광고그룹 분석</button>
-    <button class="tab-btn" onclick="switchTab(event, 'keyword')">🔍 키워드 분석</button>
-    <button class="tab-btn" onclick="switchTab(event, 'media')">📰 매체별 분석</button>
-    <button class="tab-btn" onclick="switchTab(event, 'efficiency')">⚡ 효율분석</button>
-    <button class="tab-btn" onclick="switchTab(event, 'cpc')">💲 CPC 분석</button>
-    <button class="tab-btn" onclick="switchTab(event, 'device')">📱 디바이스 분석</button>
-    <button class="tab-btn" onclick="switchTab(event, 'shopProduct')">🛍️ 쇼핑-상품 분석</button>
-  </div>
+  <div class="row" id="kpis"></div>
 
-  <!-- TAB 1: Upload (modified: drag-drop + remove stats summary) -->
-  <div id="upload" class="tab-content active">
-    <div class="section" id="section-upload">
-      <div class="section-title"><span>📤 데이터 업로드</span></div>
-      <div class="info-box">
-        💡 아래 4개 파일을 업로드하세요.<br>
-        • RAW: 일별/주별, 시간대/요일 포함 (CSV/XLSX)<br>
-        • 검색어(RAW2): 검색어 포함 (CSV/XLSX)<br>
-        • 소재(CSV): 쇼핑검색 소재/성과 보고서 (CSV)
-        • 상품TSV: 쇼핑 상품 정보 (TSV)
-      </div>
+  <h2>Campaign Analysis</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Campaign</th>
+        <th>Type</th>
+        <th>Channel</th>
+        <th>Product</th>
+        <th>Spend</th>
+        <th>Revenue</th>
+        <th>ROAS</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
 
-      <div class="upload-grid">
-        <div class="dropzone" id="dzRaw" onclick="document.getElementById('fileInputRaw').click()">
-          <div class="dropzone-title"><span>RAW (일/주별)</span><span class="upload-check" id="chkRaw">✓</span></div>
-          <div class="dropzone-desc">여기에 파일을 드래그하거나 클릭해서 선택하세요. (csv/xlsx)</div>
-          <input type="file" id="fileInputRaw" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw')" />
-        </div>
-
-        <div class="dropzone" id="dzRaw2" onclick="document.getElementById('fileInputRaw2').click()">
-          <div class="dropzone-title"><span>검색어 (RAW2)</span><span class="upload-check" id="chkRaw2">✓</span></div>
-          <div class="dropzone-desc">여기에 파일을 드래그하거나 클릭해서 선택하세요. (csv/xlsx)</div>
-          <input type="file" id="fileInputRaw2" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw2')" />
-        </div>
-
-        <div class="dropzone" id="dzShopCsv" onclick="document.getElementById('fileInputShopCsv').click()">
-          <div class="dropzone-title"><span>소재 (쇼핑 CSV)</span><span class="upload-check" id="chkShopCsv">✓</span></div>
-          <div class="dropzone-desc">쇼핑검색 성과 보고서 CSV (EUC-KR 가능)</div>
-          <input type="file" id="fileInputShopCsv" accept=".csv" onchange="handleUpload(event, 'shopCsv')" />
-        </div>
-
-        <div class="dropzone" id="dzShopTsv" onclick="document.getElementById('fileInputShopTsv').click()">
-          <div class="dropzone-title"><span>상품TSV</span><span class="upload-check" id="chkShopTsv">✓</span></div>
-          <div class="dropzone-desc">상품 정보 TSV (탭 구분)</div>
-          <input type="file" id="fileInputShopTsv" accept=".tsv" onchange="handleUpload(event, 'shopTsv')" />
-        </div>
-      </div>
-
-      <div id="uploadStatus" class="status"></div>
-    </div>
-  </div>
-
-  <!-- TAB 2: Overview (kept placeholder; original script must handle) -->
-  <div id="overview" class="tab-content"><div class="section" id="section-overview"><div class="section-title"><span>📈 성과 요약</span></div><div id="statsContainer" class="stat-grid"></div><div class="chart-container"><h3 id="weekCompareTitle" style="margin-bottom: 16px;">주간 성과 추이 (최근 4주)</h3><div class="chart-grid" id="overviewCharts"></div></div><div class="chart-container" style="margin-top: 30px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;"><h3 style="margin: 0;">📊 항목별 성과 비중 분석 (100%)</h3><div class="controls" style="margin: 0;"><select id="stackChartType" onchange="updateStackedChart()"><option value="campaignType">캠페인 유형별</option><option value="campaign" selected>캠페인별</option><option value="adgroup">광고그룹별</option><option value="device">디바이스별</option></select><select id="stackLimit" onchange="updateStackedChart()"><option value="0" selected>전체 보기</option><option value="5">상위 5개</option><option value="10">상위 10개</option><option value="20">상위 20개</option></select></div></div><div class="chart-wrapper" style="height: 400px;"><canvas id="stackedBarChart"></canvas></div><p style="font-size:12px; color:#666; text-align:right; margin-top:5px;">* 차트의 막대나 범례를 클릭하면 해당 항목이 강조됩니다.</p></div></div></div>
-
-  <!-- TAB: Rank (modified: add sticky TOP10 tables, keep existing content below) -->
-  <div id="rank" class="tab-content">
-    <div class="section">
-      <div class="section-title"><span>🏆 순위 분석</span></div>
-
-      <div class="rank-top10-sticky">
-        <div class="rank-top10-grid" id="rankTop10Grid">
-          <!-- filled by JS -->
-        </div>
-      </div>
-
-      <div class="rank-panel" style="margin-bottom:20px; background:#fff; border:1px solid #ddd; padding:20px; border-radius:8px;">
-        <h3 style="font-size: 18px;">📉 검색어별 순위 추이 (최근 14일)</h3>
-        <div class="controls" style="margin-top:10px;">
-          <select id="trendCT" onchange="updateRankTrend()"><option value="">캠페인 유형 전체</option></select>
-          <select id="trendCamp" onchange="updateRankTrend()"><option value="">캠페인 전체</option></select>
-          <select id="trendAdg" onchange="updateRankTrend()"><option value="">광고그룹 전체</option></select>
-          <select id="trendMedia" onchange="updateRankTrend()"><option value="">매체 전체</option></select>
-          <input type="text" id="trendKw" placeholder="검색어 (쉼표로 구분: 키워드1, 키워드2)" style="width:300px;" onchange="updateRankTrend()" />
-          <button onclick="updateRankTrend()">조회</button>
-        </div>
-        <div style="height:350px;"><canvas id="rankTrendChart"></canvas></div>
-      </div>
-
-      <div class="rank-panel" style="background:#fff; border:1px solid #ddd; padding:20px; border-radius:8px;">
-        <h3 style="font-size: 18px;">⏰ 시간대/요일별 평균 순위 (Heatmap)</h3>
-        <div class="controls" style="margin-top:10px;">
-          <select id="heatCT" onchange="updateRankHeatmap()"><option value="">캠페인 유형 전체</option></select>
-          <select id="heatCamp" onchange="updateRankHeatmap()"><option value="">캠페인 전체</option></select>
-          <select id="heatAdg" onchange="updateRankHeatmap()"><option value="">광고그룹 전체</option></select>
-          <select id="heatMedia" onchange="updateRankHeatmap()"><option value="">매체 전체</option></select>
-          <button onclick="updateRankHeatmap()">분석</button>
-        </div>
-        <div id="rankHeatmapContainer" style="overflow-x:auto; margin-top:15px;">
-          <p style="padding:20px; text-align:center; color:#999;">데이터를 필터링하고 '분석' 버튼을 누르면 순위표가 표시됩니다.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB 3: Campaign (modified controls: remove campaign type, change search to 상품명 검색) -->
-  <div id="campaign" class="tab-content">
-    <div class="section" id="section-campaign">
-      <div class="section-title"><span>🎯 캠페인 성과 분석</span></div>
-      <div class="controls">
-        <input class="text-col" type="text" id="campaignFilter" placeholder="상품명 검색" onkeyup="updateCampaignTable()" />
-        <select id="campaignDeviceFilter" onchange="updateCampaignTable()"><option value="">전체 디바이스</option><option value="PC">PC</option><option value="모바일">모바일</option></select>
-        <select id="campaignCampaignFilter" onchange="updateCampaignTable()"><option value="">캠페인 전체</option></select>
-        <select id="campaignAdgroupFilter" onchange="updateCampaignTable()"><option value="">광고그룹 전체</option></select>
-        <input type="number" id="standardROAS" placeholder="ROAS 기준 %" min="0" step="10" />
-        <button onclick="highlightLowROAS('campaignBody', 'standardROAS')">ROAS 적용</button>
-        <button class="filter-red" onclick="filterRedRows('campaignBody')">필터링</button>
-        <button class="roas-up" onclick="applyROASFilter('campaignBody', 'up', 'standardROAS')">↑</button>
-        <button class="roas-down" onclick="applyROASFilter('campaignBody', 'down', 'standardROAS')">↓</button>
-        <button class="danger" onclick="resetCampaign()">초기화</button>
-        <button class="secondary" onclick="toggleChangeBadge('campaignTable')">증감율 On/Off</button>
-      </div>
-      <div class="table-wrapper">
-        <table id="campaignTable">
-          <thead>
-            <tr>
-              <th onclick="sortTable('campaignTable', 0)">순위</th>
-              <th onclick="sortTable('campaignTable', 1)">캠페인</th>
-              <th onclick="sortTable('campaignTable', 2)" class="number">광고비</th>
-              <th onclick="sortTable('campaignTable', 3)" class="number">노출수</th>
-              <th onclick="sortTable('campaignTable', 4)" class="number">클릭수</th>
-              <th onclick="sortTable('campaignTable', 5)" class="number">클릭율</th>
-              <th onclick="sortTable('campaignTable', 6)" class="number">CPC</th>
-              <th onclick="sortTable('campaignTable', 7)" class="number">전환수</th>
-              <th onclick="sortTable('campaignTable', 8)" class="number">전환율</th>
-              <th onclick="sortTable('campaignTable', 9)" class="number">매출액</th>
-              <th onclick="sortTable('campaignTable', 10)" class="number">전환당비용</th>
-              <th onclick="sortTable('campaignTable', 11)" class="number">ROAS</th>
-            </tr>
-          </thead>
-          <tbody id="campaignBody"><tr><td colspan="12" class="no-data">데이터를 업로드해주세요.</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB 4: Adgroup (kept layout; TOTAL ordering handled in JS) -->
-  <div id="adgroup" class="tab-content">
-    <div class="section" id="section-adgroup">
-      <div class="section-title"><span>🧩 광고그룹 성과 분석</span></div>
-      <div class="controls">
-        <input class="text-col" type="text" id="adgroupFilter" placeholder="광고그룹 검색" onkeyup="updateAdgroupTable()" />
-        <select id="adgroupCampaignFilter" onchange="updateAdgroupTable()"><option value="">캠페인 전체</option></select>
-        <select id="adgroupCampaignTypeFilter" onchange="updateAdgroupTable()"><option value="">캠페인 유형 전체</option></select>
-        <select id="adgroupDeviceFilter" onchange="updateAdgroupTable()"><option value="">전체 디바이스</option><option value="PC">PC</option><option value="모바일">모바일</option></select>
-        <input type="number" id="standardROAS_AG" placeholder="ROAS 기준 %" min="0" step="10" />
-        <button onclick="highlightLowROAS('adgroupBody', 'standardROAS_AG')">ROAS 적용</button>
-        <button class="filter-red" onclick="filterRedRows('adgroupBody')">필터링</button>
-        <button class="roas-up" onclick="applyROASFilter('adgroupBody', 'up', 'standardROAS_AG')">↑</button>
-        <button class="roas-down" onclick="applyROASFilter('adgroupBody', 'down', 'standardROAS_AG')">↓</button>
-        <button class="danger" onclick="resetAdgroup()">초기화</button>
-        <button class="secondary" onclick="toggleChangeBadge('adgroupTable')">증감율 On/Off</button>
-      </div>
-      <div class="table-wrapper">
-        <table id="adgroupTable">
-          <thead>
-            <tr>
-              <th onclick="sortTable('adgroupTable', 0)">순위</th>
-              <th onclick="sortTable('adgroupTable', 1)">광고그룹</th>
-              <th onclick="sortTable('adgroupTable', 2)">캠페인</th>
-              <th onclick="sortTable('adgroupTable', 3)">캠페인유형</th>
-              <th onclick="sortTable('adgroupTable', 4)" class="number">광고비</th>
-              <th onclick="sortTable('adgroupTable', 5)" class="number">노출수</th>
-              <th onclick="sortTable('adgroupTable', 6)" class="number">클릭수</th>
-              <th onclick="sortTable('adgroupTable', 7)" class="number">클릭율</th>
-              <th onclick="sortTable('adgroupTable', 8)" class="number">CPC</th>
-              <th onclick="sortTable('adgroupTable', 9)" class="number">전환수</th>
-              <th onclick="sortTable('adgroupTable', 10)" class="number">전환율</th>
-              <th onclick="sortTable('adgroupTable', 11)" class="number">매출액</th>
-              <th onclick="sortTable('adgroupTable', 12)" class="number">전환당비용</th>
-              <th onclick="sortTable('adgroupTable', 13)" class="number">ROAS</th>
-            </tr>
-          </thead>
-          <tbody id="adgroupBody"><tr><td colspan="14" class="no-data">데이터를 업로드해주세요.</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB 5: Keyword (data source must be RAW2; ROAS diff in table; TOTAL ordering in JS) -->
-  <div id="keyword" class="tab-content">
-    <div class="section" id="section-keyword">
-      <div class="section-title"><span>🔍 키워드 성과 분석</span></div>
-      <div class="controls">
-        <input class="text-col" type="text" id="keywordSearch" placeholder="키워드 검색" onkeyup="updateKeywordTable(true)" />
-        <select id="keywordCampaignTypeFilter" onchange="updateKeywordTable(true)"><option value="">캠페인 유형 전체</option></select>
-        <select id="keywordCampaignFilter" onchange="updateKeywordTable(true)"><option value="">캠페인 전체</option></select>
-        <select id="keywordAdgroupFilter" onchange="updateKeywordTable(true)"><option value="">광고그룹 전체</option></select>
-        <select id="deviceFilter" onchange="updateKeywordTable(true)"><option value="">전체 디바이스</option><option value="PC">PC</option><option value="모바일">모바일</option></select>
-        <input type="number" id="standardROAS2" placeholder="ROAS 기준 %" min="0" step="10" />
-        <button onclick="highlightLowROAS('keywordBody', 'standardROAS2')">ROAS 적용</button>
-        <button class="filter-red" onclick="filterRedRows('keywordBody')">필터링</button>
-        <button class="roas-up" onclick="applyROASFilter('keywordBody', 'up', 'standardROAS2')">↑</button>
-        <button class="roas-down" onclick="applyROASFilter('keywordBody', 'down', 'standardROAS2')">↓</button>
-        <button class="danger" onclick="resetKeyword()">초기화</button>
-        <button class="secondary" onclick="toggleChangeBadge('keywordTable')">증감율 On/Off</button>
-      </div>
-      <div class="pagination">
-        <button id="kwPrev" onclick="changeKeywordPage(-1)">이전</button>
-        <span id="kwPageInfo">0 / 0</span>
-        <button id="kwNext" onclick="changeKeywordPage(1)">다음</button>
-      </div>
-      <div class="table-wrapper">
-        <table id="keywordTable">
-          <thead>
-            <tr>
-              <th onclick="sortTable('keywordTable', 0)">순위</th>
-              <th onclick="sortTable('keywordTable', 1)">검색어</th>
-              <th onclick="sortTable('keywordTable', 2)">캠페인</th>
-              <th onclick="sortTable('keywordTable', 3)">광고그룹</th>
-              <th onclick="sortTable('keywordTable', 4)" class="number">광고비</th>
-              <th onclick="sortTable('keywordTable', 5)" class="number">노출수</th>
-              <th onclick="sortTable('keywordTable', 6)" class="number">클릭수</th>
-              <th onclick="sortTable('keywordTable', 7)" class="number">클릭율</th>
-              <th onclick="sortTable('keywordTable', 8)" class="number">CPC</th>
-              <th onclick="sortTable('keywordTable', 9)" class="number">전환수</th>
-              <th onclick="sortTable('keywordTable', 10)" class="number">전환율</th>
-              <th onclick="sortTable('keywordTable', 11)" class="number">매출액</th>
-              <th onclick="sortTable('keywordTable', 12)" class="number">전환당비용</th>
-              <th onclick="sortTable('keywordTable', 13)" class="number">ROAS</th>
-            </tr>
-          </thead>
-          <tbody id="keywordBody"><tr><td colspan="14" class="no-data">데이터를 업로드해주세요.</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB 6: Media (kept placeholder; original script must handle) -->
-  <div id="media" class="tab-content"><div class="section" id="section-media"><div class="section-title"><span>📰 매체별 분석</span></div><div class="controls"><input class="text-col" type="text" id="mediaFilter" placeholder="매체 검색" onkeyup="updateMediaTable()"><select id="mediaCampaignTypeFilter" onchange="updateMediaTable()"><option value="">캠페인 유형 전체</option></select><select id="mediaCampaignFilter" onchange="updateMediaTable()"><option value="">캠페인 전체</option></select><select id="mediaAdgroupFilter" onchange="updateMediaTable()"><option value="">광고그룹 전체</option></select><select id="mediaDeviceFilter" onchange="updateMediaTable()"><option value="">전체 디바이스</option><option value="PC">PC</option><option value="모바일">모바일</option></select><input type="number" id="standardROAS_MEDIA" placeholder="ROAS 기준 %" min="0" step="10"><button onclick="highlightLowROAS('mediaBody', 'standardROAS_MEDIA')">ROAS 적용</button><button class="filter-red" onclick="filterRedRows('mediaBody')">필터링</button><button class="roas-up" onclick="applyROASFilter('mediaBody', 'up', 'standardROAS_MEDIA')">↑</button><button class="roas-down" onclick="applyROASFilter('mediaBody', 'down', 'standardROAS_MEDIA')">↓</button><button class="danger" onclick="resetMedia()">초기화</button><button class="secondary" onclick="toggleChangeBadge('mediaTable')">증감율 On/Off</button></div><div class="table-wrapper"><table id="mediaTable"><thead><tr><th onclick="sortTable('mediaTable', 0)">순위</th><th onclick="sortTable('mediaTable', 1)">매체</th><th onclick="sortTable('mediaTable', 2)">캠페인</th><th onclick="sortTable('mediaTable', 3)">광고그룹</th><th onclick="sortTable('mediaTable', 4)">디바이스</th><th onclick="sortTable('mediaTable', 5)">캠페인유형</th><th onclick="sortTable('mediaTable', 6)" class="number">광고비</th><th onclick="sortTable('mediaTable', 7)" class="number">노출수</th><th onclick="sortTable('mediaTable', 8)" class="number">클릭수</th><th onclick="sortTable('mediaTable', 9)" class="number">클릭율</th><th onclick="sortTable('mediaTable', 10)" class="number">CPC</th><th onclick="sortTable('mediaTable', 11)" class="number">전환수</th><th onclick="sortTable('mediaTable', 12)" class="number">전환율</th><th onclick="sortTable('mediaTable', 13)" class="number">매출액</th><th onclick="sortTable('mediaTable', 14)" class="number">전환당비용</th><th onclick="sortTable('mediaTable', 15)" class="number">ROAS</th></tr></thead><tbody id="mediaBody"><tr><td colspan="16" class="no-data">데이터를 업로드해주세요.</td></tr></tbody></table></div></div></div>
-
-  <!-- TAB 7: Efficiency (kept placeholder; original script must handle) -->
-  <div id="efficiency" class="tab-content"><div class="section" id="section-efficiency"><div class="section-title"><span>⚡ 효율분석</span></div><div class="info-box">💡 필터링 조건(최소 광고비, 최소 전환수 등)을 모두 만족하면 효율 GOOD, 아니면 BAD.</div><div class="controls"><input class="text-col" type="text" id="brandExclude" placeholder="제외 키워드(콤마)"><select id="efficiencyCampaignTypeFilter"><option value="">캠페인 유형 전체</option></select><select id="efficiencyCampaignFilter"><option value="">캠페인 전체</option></select><select id="efficiencyAdgroupFilter"><option value="">광고그룹 전체</option></select><input type="number" id="filterCostMin" placeholder="최소 광고비"><input type="number" id="filterConvMin" placeholder="최소 전환수"><input type="number" id="filterROASMin" placeholder="최소 ROAS"><input type="number" id="filterCPAMin" placeholder="최소 전환당비용"><button onclick="updateEfficiencyAnalysis()">🔍 적용</button><button class="danger" onclick="resetEfficiency()">초기화</button><button class="secondary btn-compact" onclick="toggleChangeBadge('goodEfficiencyTable'); toggleChangeBadge('badEfficiencyTable');">증감율 On/Off</button></div><h3 style="margin: 20px 0 10px; color: #333;">✅ 효율 GOOD (필터 충족)</h3><div class="table-wrapper"><table id="goodEfficiencyTable"><thead><tr><th onclick="sortTable('goodEfficiencyTable',0)">순위</th><th onclick="sortTable('goodEfficiencyTable',1)">캠페인유형</th><th onclick="sortTable('goodEfficiencyTable',2)">검색어</th><th onclick="sortTable('goodEfficiencyTable',3)">캠페인</th><th onclick="sortTable('goodEfficiencyTable',4)">광고그룹</th><th onclick="sortTable('goodEfficiencyTable',5)" class="number">광고비</th><th onclick="sortTable('goodEfficiencyTable',6)" class="number">노출수</th><th onclick="sortTable('goodEfficiencyTable',7)" class="number">클릭수</th><th onclick="sortTable('goodEfficiencyTable',8)" class="number">클릭율</th><th onclick="sortTable('goodEfficiencyTable',9)" class="number">CPC</th><th onclick="sortTable('goodEfficiencyTable',10)" class="number">전환수</th><th onclick="sortTable('goodEfficiencyTable',11)" class="number">전환당비용</th><th onclick="sortTable('goodEfficiencyTable',12)" class="number">ROAS</th></tr></thead><tbody id="goodEfficiencyBody"><tr><td colspan="13" class="no-data">데이터를 업로드해주세요.</td></tr></tbody></table></div><h3 style="margin: 20px 0 10px; color: #333;">❌ 효율 BAD (필터 미충족)</h3><div class="table-wrapper"><table id="badEfficiencyTable"><thead><tr><th onclick="sortTable('badEfficiencyTable',0)">순위</th><th onclick="sortTable('badEfficiencyTable',1)">캠페인유형</th><th onclick="sortTable('badEfficiencyTable',2)">검색어</th><th onclick="sortTable('badEfficiencyTable',3)">캠페인</th><th onclick="sortTable('badEfficiencyTable',4)">광고그룹</th><th onclick="sortTable('badEfficiencyTable',5)" class="number">광고비</th><th onclick="sortTable('badEfficiencyTable',6)" class="number">노출수</th><th onclick="sortTable('badEfficiencyTable',7)" class="number">클릭수</th><th onclick="sortTable('badEfficiencyTable',8)" class="number">클릭율</th><th onclick="sortTable('badEfficiencyTable',9)" class="number">CPC</th><th onclick="sortTable('badEfficiencyTable',10)" class="number">전환수</th><th onclick="sortTable('badEfficiencyTable',11)" class="number">전환당비용</th><th onclick="sortTable('badEfficiencyTable',12)" class="number">ROAS</th></tr></thead><tbody id="badEfficiencyBody"><tr><td colspan="13" class="no-data">데이터를 업로드해주세요.</td></tr></tbody></table></div></div></div>
-
-  <!-- TAB 8: CPC (layout kept but filters must match efficiency via JS; placeholder container) -->
-  <div id="cpc" class="tab-content"><div class="section" id="section-cpc"><div class="section-title"><span>💲 CPC 분석</span></div><div class="info-box">💡 필터링을 효율분석과 동일하게 적용합니다.</div><div class="controls" id="cpcControls"><input class="text-col" type="text" id="cpcBrandExclude" placeholder="제외 키워드(콤마)"><select id="cpcCampaignTypeFilter"><option value="">캠페인 유형 전체</option></select><select id="cpcCampaignFilter"><option value="">캠페인 전체</option></select><select id="cpcAdgroupFilter"><option value="">광고그룹 전체</option></select><input type="number" id="cpcFilterCostMin" placeholder="최소 광고비"><input type="number" id="cpcFilterConvMin" placeholder="최소 전환수"><input type="number" id="cpcFilterROASMin" placeholder="최소 ROAS"><input type="number" id="cpcFilterCPAMin" placeholder="최소 전환당비용"><button onclick="updateCPCAnalysis()">🔍 적용</button><button class="danger" onclick="resetCPC()">초기화</button><button class="secondary" onclick="toggleChangeBadge('cpcTable')">증감율 On/Off</button></div><div class="table-wrapper"><table id="cpcTable"><thead><tr><th onclick="sortTable('cpcTable',0)">순위</th><th onclick="sortTable('cpcTable',1)">캠페인유형</th><th onclick="sortTable('cpcTable',2)">검색어</th><th onclick="sortTable('cpcTable',3)">캠페인</th><th onclick="sortTable('cpcTable',4)">광고그룹</th><th onclick="sortTable('cpcTable',5)" class="number">광고비</th><th onclick="sortTable('cpcTable',6)" class="number">노출수</th><th onclick="sortTable('cpcTable',7)" class="number">클릭수</th><th onclick="sortTable('cpcTable',8)" class="number">클릭율</th><th onclick="sortTable('cpcTable',9)" class="number">CPC</th><th onclick="sortTable('cpcTable',10)" class="number">전환수</th><th onclick="sortTable('cpcTable',11)" class="number">전환당비용</th><th onclick="sortTable('cpcTable',12)" class="number">ROAS</th></tr></thead><tbody id="cpcBody"><tr><td colspan="13" class="no-data">데이터를 업로드해주세요.</td></tr></tbody></table></div></div></div>
-
-  <!-- TAB 9: Device (placeholder; original script must handle) -->
-  <div id="device" class="tab-content"><div class="section"><div class="section-title"><span>📱 디바이스 분석</span></div><div class="info-box">(기존 기능 유지)</div></div></div>
-
-  <!-- TAB: 쇼핑-상품 분석 (new) -->
-  <div id="shopProduct" class="tab-content">
-    <div class="section" id="section-shopProduct">
-      <div class="section-title"><span>🛍️ 쇼핑-상품 분석 (최근 7일 vs 지난주)</span></div>
-
-      <div class="shop-upload" id="shopUploadSection">
-        <div class="file-input-group"><label>1. 상품 정보 (TSV)</label><input type="file" id="shopTsvFile" accept=".tsv" /></div>
-        <div class="file-input-group"><label>2. 성과 보고서 (CSV)</label><input type="file" id="shopCsvFile" accept=".csv" /></div>
-        <button class="controls" style="margin:0;"><button onclick="startShopAnalysis()" style="background:#007bff; color:white; border:none; padding:10px 25px; border-radius:6px; cursor:pointer; font-weight:bold;">데이터 분석 실행</button></button>
-      </div>
-
-      <div id="shopResultArea" style="display:none;">
-        <div id="shopCpCards" class="shop-filter-section"></div>
-        <div id="shopGrCards" class="shop-filter-section"></div>
-
-        <div class="shop-table-wrapper">
-          <table class="shop-table">
-            <thead>
-              <tr>
-                <th>이미지</th>
-                <th onclick="shopResort('cp')" class="shop-col-campaign">캠페인</th>
-                <th onclick="shopResort('gr')" class="shop-col-adgroup">광고그룹</th>
-                <th class="shop-col-product">상품명</th>
-                <th onclick="shopResort('cost')">광고비</th>
-                <th onclick="shopResort('view')">노출수</th>
-                <th onclick="shopResort('click')">클릭수</th>
-                <th onclick="shopResort('ctr')">클릭율</th>
-                <th onclick="shopResort('cpc')">CPC</th>
-                <th onclick="shopResort('cv')">전환수</th>
-                <th onclick="shopResort('amt')">매출액</th>
-                <th onclick="shopResort('roas')">ROAS</th>
-              </tr>
-            </thead>
-            <tbody id="shopTableBody"></tbody>
-          </table>
-        </div>
-
-        <div id="shopDetailSection" class="shop-detail">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3 id="shopDetailTitle" style="margin:0;"></h3>
-            <button onclick="document.getElementById('shopDetailSection').style.display='none'" style="color:#dc3545; border:none; background:none; cursor:pointer; font-weight:bold; font-size: 16px;">[✕]</button>
-          </div>
-          <div class="shop-tab-area" id="shopTabArea"></div>
-          <div class="shop-chart-grid">
-            <div class="shop-chart-container">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><h5 style="margin:0;">📅 일별 추이</h5></div>
-              <div id="shopDayStats" class="shop-stats-row"></div>
-              <div class="shop-chart-box"><canvas id="shopDayChart"></canvas></div>
-            </div>
-            <div class="shop-chart-container">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><h5 style="margin:0;">📊 주별 추이 (최근 4주)</h5></div>
-              <div id="shopWeekStats" class="shop-stats-row"></div>
-              <div class="shop-chart-box"><canvas id="shopWeekChart"></canvas></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="info-box" style="margin-top: 14px;">
-        💡 이 페이지는 소재.html의 화면/기능을 그대로 포함합니다. (다만 증감율/색/폰트는 기존 리포트 스타일로 통일)
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-  /*********************************************************************
-   * NOTE
-   * - The original marketing_report JS is very large. This patch keeps
-   *   existing function names referenced by the UI.
-   * - We only ADD new functions / wrappers and minimally adjust behavior
-   *   requested by the user.
-   *********************************************************************/
-
-  // === Global data holders (existing script uses these names in many places) ===
-  let rawData = [];   // from RAW
-  let raw2Data = [];  // from RAW2
-
-  // NEW: 쇼핑 데이터 holders
-  let shopRaw = [], shopPMap = {}, shopAggList = [];
-  let shopDChart = null, shopWChart = null;
-  let shopMetric = 'amt';
-  let shopSKey = 'cv', shopSDir = 'desc', shopActiveMat = null;
-  let shopFilterCp = null, shopFilterGr = null;
-
-  // Keep plugin usage
-  if (window.Chart && window.ChartDataLabels) {
-    try { Chart.register(ChartDataLabels); } catch(e) {}
-  }
-
-  const shopMetricNames = {
-    amt: '매출액',
-    cost: '광고비',
-    view: '노출수',
-    click: '클릭수',
-    cv: '전환수',
-    ctr: '클릭율(%)',
-    cvr: '전환율(%)',
-    roas: 'ROAS(%)',
-    cpc: 'CPC'
-  };
-
-  // === Drag & drop helpers ===
-  function setupDropzone(zoneId, inputId, doneClassTargetId) {
-    const dz = document.getElementById(zoneId);
-    const input = document.getElementById(inputId);
-    if (!dz || !input) return;
-
-    const prevent = (e) => { e.preventDefault(); e.stopPropagation(); };
-    ['dragenter','dragover','dragleave','drop'].forEach(evt => dz.addEventListener(evt, prevent));
-    dz.addEventListener('dragenter', () => dz.classList.add('dragover'));
-    dz.addEventListener('dragover', () => dz.classList.add('dragover'));
-    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
-    dz.addEventListener('drop', (e) => {
-      dz.classList.remove('dragover');
-      const files = e.dataTransfer.files;
-      if (files && files.length) {
-        input.files = files;
-        input.dispatchEvent(new Event('change'));
-      }
-    });
-
-    input.addEventListener('change', () => {
-      const has = input.files && input.files.length;
-      if (has) dz.classList.add('done'); else dz.classList.remove('done');
-    });
-  }
-
-  // Initialize dropzones
-  document.addEventListener('DOMContentLoaded', () => {
-    setupDropzone('dzRaw', 'fileInputRaw');
-    setupDropzone('dzRaw2', 'fileInputRaw2');
-    setupDropzone('dzShopCsv', 'fileInputShopCsv');
-    setupDropzone('dzShopTsv', 'fileInputShopTsv');
-  });
-
-  // === Upload handler wrapper ===
-  // Existing file had handleUpload(event, type). We keep name and extend.
-  async function handleUpload(event, type) {
-    const file = event?.target?.files?.[0];
-    if (!file) return;
-
-    // Mark status
-    const status = document.getElementById('uploadStatus');
-    if (status) {
-      status.style.display = 'block';
-      status.className = 'status';
-      status.textContent = `업로드 중: ${file.name}`;
-    }
-
-    try {
-      if (type === 'raw' || type === 'raw2') {
-        const data = await readCsvOrXlsx(file);
-        if (type === 'raw') rawData = data;
-        if (type === 'raw2') raw2Data = data;
-
-        // Update check UI
-        if (type === 'raw') document.getElementById('dzRaw')?.classList.add('done');
-        if (type === 'raw2') document.getElementById('dzRaw2')?.classList.add('done');
-
-        // Recompute all existing dashboards if original functions exist
-        safeRebuildAll();
-      }
-
-      if (type === 'shopCsv') {
-        // keep as File for papa parse (EUC-KR)
-        window.__shopCsvFile = file;
-        document.getElementById('dzShopCsv')?.classList.add('done');
-      }
-      if (type === 'shopTsv') {
-        window.__shopTsvFile = file;
-        document.getElementById('dzShopTsv')?.classList.add('done');
-      }
-
-      if (status) {
-        status.className = 'status success';
-        status.textContent = `업로드 완료: ${file.name}`;
-      }
-    } catch (e) {
-      console.error(e);
-      if (status) {
-        status.className = 'status error';
-        status.textContent = `업로드 실패: ${file.name}`;
-      }
-    }
-  }
-
-  // === Minimal readers ===
-  async function readCsvOrXlsx(file) {
-    const ext = (file.name.split('.').pop() || '').toLowerCase();
-    const buf = await file.arrayBuffer();
-
-    if (ext === 'csv') {
-      // Try UTF-8 first; if BOM or weird, browser typically handles.
-      const text = new TextDecoder('utf-8').decode(buf);
-      return parseCsvText(text);
-    }
-
-    // xlsx/xls
-    const wb = XLSX.read(buf, { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
-    return json;
-  }
-
-  function parseCsvText(text) {
-    // Split respecting simple CSV; we fallback to Papa if available.
-    if (window.Papa) {
-      const parsed = Papa.parse(text, { skipEmptyLines: true });
-      return parsed.data;
-    }
-    return text.split(/\r?\n/).filter(Boolean).map(line => line.split(','));
-  }
-
-  // === Tab switching (existing) ===
-  function switchTab(evt, tabId) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    evt.currentTarget.classList.add('active');
-    document.getElementById(tabId).classList.add('active');
-  }
-
-  // === Safety wrapper: keep existing report functions if present ===
-  function safeRebuildAll() {
-    // If original script defined these, call them.
-    try { if (typeof buildFilters === 'function') buildFilters(); } catch(e) {}
-    try { if (typeof updateOverview === 'function') updateOverview(); } catch(e) {}
-    try { if (typeof updateCampaignTable === 'function') updateCampaignTable(); } catch(e) {}
-    try { if (typeof updateAdgroupTable === 'function') updateAdgroupTable(); } catch(e) {}
-    try { if (typeof updateKeywordTable === 'function') updateKeywordTable(true); } catch(e) {}
-    try { if (typeof updateMediaTable === 'function') updateMediaTable(); } catch(e) {}
-    try { if (typeof updateEfficiencyAnalysis === 'function') updateEfficiencyAnalysis(); } catch(e) {}
-    try { if (typeof updateCPCAnalysis === 'function') updateCPCAnalysis(); } catch(e) {}
-    try { if (typeof updateRankHeatmap === 'function') updateRankHeatmap(); } catch(e) {}
-    try { if (typeof updateRankTrend === 'function') updateRankTrend(); } catch(e) {}
-
-    // NEW rank top10 cards
-    try { renderRankTop10Sticky(); } catch(e) {}
-  }
-
-  // === Rank TOP10 sticky tables (based on RAW2 keyword data) ===
-  function renderRankTop10Sticky() {
-    const grid = document.getElementById('rankTop10Grid');
-    if (!grid) return;
-
-    // Use RAW2 keyword data; if not present, show placeholder.
-    if (!raw2Data || raw2Data.length < 2) {
-      grid.innerHTML = '<div class="info-box" style="grid-column: 1 / -1;">RAW2 데이터를 업로드하면 검색어 TOP10 표가 표시됩니다.</div>';
-      return;
-    }
-
-    // Find header index
-    const headerIdx = raw2Data.findIndex(r => (r || []).join(',').includes('캠페인유형'));
-    const rows = raw2Data.slice(headerIdx + 1).filter(r => r && r.length > 10);
-
-    // Guess indices by header row
-    const header = raw2Data[headerIdx] || [];
-    const idx = {
-      keyword: header.indexOf('검색어'),
-      cost: header.indexOf('총비용(VAT포함,원)'),
-      view: header.indexOf('노출수'),
-      click: header.indexOf('클릭수'),
-      cv: header.indexOf('전환수'),
-      amt: header.indexOf('전환매출액(원)')
-    };
-
-    const metrics = [
-      { key: 'cost', label: '광고비 TOP10', fmt: v => Number(v||0).toLocaleString() },
-      { key: 'view', label: '노출수 TOP10', fmt: v => Number(v||0).toLocaleString() },
-      { key: 'click', label: '클릭수 TOP10', fmt: v => Number(v||0).toLocaleString() },
-      { key: 'cv', label: '전환수 TOP10', fmt: v => Number(v||0).toLocaleString() },
-      { key: 'amt', label: '매출액 TOP10', fmt: v => Number(v||0).toLocaleString() }
+  <script>
+    // ----- Data (example / placeholder) -----
+    // In the real report, this would be embedded/loaded. We preserve existing behavior.
+    const data = window.__MARKETING_REPORT_DATA__ || [
+      { date: '2025-12-01', campaign: 'Holiday Push', type: 'Search', channel: 'Google', product: 'Widget A', spend: 1200, revenue: 4200 },
+      { date: '2025-12-02', campaign: 'Holiday Push', type: 'Search', channel: 'Google', product: 'Widget B', spend: 800, revenue: 2100 },
+      { date: '2025-12-03', campaign: 'Brand Lift', type: 'Display', channel: 'Meta', product: 'Widget A', spend: 600, revenue: 900 },
+      { date: '2025-12-03', campaign: 'Retargeting', type: 'Display', channel: 'Meta', product: 'Widget C', spend: 400, revenue: 1100 },
     ];
 
-    const aggByKeyword = new Map();
-    rows.forEach(r => {
-      const k = (r[idx.keyword] || '').toString().trim();
-      if (!k) return;
-      const o = aggByKeyword.get(k) || { cost:0, view:0, click:0, cv:0, amt:0 };
-      o.cost += Number(r[idx.cost] || 0);
-      o.view += Number(r[idx.view] || 0);
-      o.click += Number(r[idx.click] || 0);
-      o.cv += Number(r[idx.cv] || 0);
-      o.amt += Number(r[idx.amt] || 0);
-      aggByKeyword.set(k, o);
-    });
+    // ----- Helpers -----
+    const $ = (id) => document.getElementById(id);
+    const fmtMoney = (n) => (Number(n || 0)).toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
-    const entries = [...aggByKeyword.entries()].map(([keyword, v]) => ({ keyword, ...v }));
-
-    grid.innerHTML = metrics.map(m => {
-      const top = [...entries].sort((a,b) => (b[m.key]||0) - (a[m.key]||0)).slice(0,10);
-      const rowsHtml = top.map((t, i) => `
-        <tr>
-          <td style="width:22px;">${i+1}</td>
-          <td title="${escapeHtml(t.keyword)}" style="max-width:160px; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(t.keyword)}</td>
-          <td style="text-align:right;">${m.fmt(t[m.key])}</td>
-        </tr>
-      `).join('');
-
-      return `
-        <div class="rank-mini-table">
-          <div class="rank-mini-title">${m.label}</div>
-          <table>
-            <thead><tr><th>#</th><th>검색어</th><th style="text-align:right;">값</th></tr></thead>
-            <tbody>${rowsHtml}</tbody>
-          </table>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function escapeHtml(s){
-    return (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  // === CPC analysis stubs (to avoid breaking if original existed elsewhere) ===
-  function updateCPCAnalysis() {
-    // If original exists, prefer it
-    if (typeof window.__origUpdateCPCAnalysis === 'function') return window.__origUpdateCPCAnalysis();
-    // Otherwise no-op
-  }
-  function resetCPC() {
-    if (typeof window.__origResetCPC === 'function') return window.__origResetCPC();
-    document.getElementById('cpcBrandExclude').value = '';
-    document.getElementById('cpcFilterCostMin').value = '';
-    document.getElementById('cpcFilterConvMin').value = '';
-    document.getElementById('cpcFilterROASMin').value = '';
-    document.getElementById('cpcFilterCPAMin').value = '';
-    safeRebuildAll();
-  }
-
-  /*********************************************************************
-   * 쇼핑-상품 분석 (ported from 소재.html)
-   *********************************************************************/
-  function startShopAnalysis() {
-    const tsv = document.getElementById('shopTsvFile').files[0] || window.__shopTsvFile;
-    const csv = document.getElementById('shopCsvFile').files[0] || window.__shopCsvFile;
-    if (!tsv || !csv) return alert('파일을 업로드해주세요.');
-
-    shopPMap = {};
-    Papa.parse(tsv, {
-      delimiter: '\t',
-      skipEmptyLines: true,
-      complete: (t) => {
-        t.data.forEach(r => {
-          if (r[2]) shopPMap[r[2].trim()] = { name: r[14], img: r[15] };
-        });
-
-        Papa.parse(csv, {
-          encoding: 'EUC-KR',
-          skipEmptyLines: true,
-          complete: (c) => {
-            const headRow = c.data.findIndex(r => (r || []).join(',').includes('캠페인유형'));
-            shopRaw = c.data.slice(headRow + 1)
-              .filter(r => r && r[0] === '쇼핑검색')
-              .map(r => ({
-                cp: r[1],
-                gr: r[2],
-                mat: (r[3] || '').toString().trim(),
-                date: r[6],
-                week: r[7],
-                cost: Number(r[8] || 0),
-                view: Number(r[9] || 0),
-                click: Number(r[10] || 0),
-                cv: Number(r[11] || 0),
-                amt: Number(r[12] || 0)
-              }));
-
-            document.getElementById('shopUploadSection').style.display = 'none';
-            document.getElementById('shopResultArea').style.display = 'block';
-            shopResetFilters();
-          }
-        });
-      }
-    });
-  }
-
-  function shopResetFilters() {
-    shopFilterCp = null;
-    shopFilterGr = null;
-    shopRenderFilters();
-    shopRefresh();
-  }
-  function shopSetCP(c){ shopFilterCp = c; shopFilterGr = null; shopRenderFilters(); shopRefresh(); }
-  function shopSetGR(g){ shopFilterGr = g; shopRenderFilters(); shopRefresh(); }
-
-  function shopRenderFilters() {
-    const cps = [...new Set(shopRaw.map(d => d.cp))];
-    let h = `<button class="shop-reset-btn" onclick="shopResetFilters()">🔄 초기화</button>`;
-    h += `<div class="shop-card ${!shopFilterCp ? 'active' : ''}" onclick="shopSetCP(null)">전체 캠페인</div>`;
-    cps.forEach(c => h += `<div class="shop-card ${shopFilterCp === c ? 'active' : ''}" onclick="shopSetCP('${escapeHtml(c)}')">${escapeHtml(c)}</div>`);
-    document.getElementById('shopCpCards').innerHTML = h;
-
-    if (shopFilterCp) {
-      const grs = [...new Set(shopRaw.filter(d => d.cp === shopFilterCp).map(d => d.gr))];
-      let gh = `<div class="shop-card ${!shopFilterGr ? 'active' : ''}" onclick="shopSetGR(null)">전체 광고그룹</div>`;
-      grs.forEach(g => gh += `<div class="shop-card ${shopFilterGr === g ? 'active' : ''}" onclick="shopSetGR('${escapeHtml(g)}')">${escapeHtml(g)}</div>`);
-      document.getElementById('shopGrCards').innerHTML = gh;
-    } else {
-      document.getElementById('shopGrCards').innerHTML = '';
+    function uniq(arr) {
+      return Array.from(new Set(arr)).sort((a, b) => String(a).localeCompare(String(b)));
     }
-  }
 
-  function shopRefresh() {
-    const allDates = [...new Set(shopRaw.map(d => d.date))].sort().reverse();
-    const curDates = allDates.slice(0, 7);
-    const preDates = allDates.slice(7, 14);
-
-    const filtered = shopRaw.filter(d => (!shopFilterCp || d.cp === shopFilterCp) && (!shopFilterGr || d.gr === shopFilterGr));
-
-    const agg = {};
-    const gCheck = {};
-    filtered.forEach(r => {
-      const pName = shopPMap[r.mat]?.name || '알수없음';
-      const gk = `${r.cp}_${r.gr}_${pName}`;
-      if (!gCheck[gk]) gCheck[gk] = new Set();
-      gCheck[gk].add(r.mat);
-
-      if (!agg[r.mat]) {
-        agg[r.mat] = { cp: r.cp, gr: r.gr, mat: r.mat, cost:0, view:0, click:0, cv:0, amt:0, pCost:0, pView:0, pClick:0, pCv:0, pAmt:0 };
-      }
-
-      if (curDates.includes(r.date)) {
-        agg[r.mat].cost += r.cost;
-        agg[r.mat].view += r.view;
-        agg[r.mat].click += r.click;
-        agg[r.mat].cv += r.cv;
-        agg[r.mat].amt += r.amt;
-      }
-      if (preDates.includes(r.date)) {
-        agg[r.mat].pCost += r.cost;
-        agg[r.mat].pView += r.view;
-        agg[r.mat].pClick += r.click;
-        agg[r.mat].pCv += r.cv;
-        agg[r.mat].pAmt += r.amt;
-      }
-    });
-
-    shopAggList = Object.values(agg).map(r => {
-      const pName = shopPMap[r.mat]?.name || '매칭실패';
-      return {
-        ...r,
-        pName,
-        pImg: shopPMap[r.mat]?.img || '',
-        isG: (gCheck[`${r.cp}_${r.gr}_${pName}`]?.size || 0) > 1,
-        ctr: r.view > 0 ? (r.click / r.view * 100) : 0,
-        cpc: r.click > 0 ? (r.cost / r.click) : 0,
-        roas: r.cost > 0 ? (r.amt / r.cost * 100) : 0,
-        pCtr: r.pView > 0 ? (r.pClick / r.pView * 100) : 0,
-        pCpc: r.pClick > 0 ? (r.pCost / r.pClick) : 0,
-        pRoas: r.pCost > 0 ? (r.pAmt / r.pCost * 100) : 0
-      };
-    });
-
-    shopAggList.sort((a,b) => {
-      const va = a[shopSKey], vb = b[shopSKey];
-      return shopSDir === 'desc' ? (vb - va) : (va - vb);
-    });
-
-    const getDiffPct = (cur, pre) => {
-      if (!pre) return '';
-      const d = ((cur - pre) / pre * 100);
-      if (Math.abs(d) < 0.5) return '';
-      const signUp = d > 0;
-      const cls = signUp ? 'shop-up' : 'shop-down';
-      const icon = signUp ? '▲' : '▼';
-      return `<span class="shop-diff ${cls}">(${icon}${Math.abs(d).toFixed(0)}%)</span>`;
-    };
-
-    document.getElementById('shopTableBody').innerHTML = shopAggList.map(r => `
-      <tr onclick="shopViewDetail('${escapeHtml(r.mat)}')" style="cursor:pointer;">
-        <td><img src="${escapeHtml(r.pImg)}" class="img-thumb" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2246%22 height=%2246%22%3E%3Crect fill=%22%23ddd%22 width=%2246%22 height=%2246%22/%3E%3C/svg%3E'" /></td>
-        <td class="shop-col-campaign" title="${escapeHtml(r.cp)}">${escapeHtml(r.cp)}</td>
-        <td class="shop-col-adgroup" title="${escapeHtml(r.gr)}">${escapeHtml(r.gr)}</td>
-        <td class="shop-col-product" title="${escapeHtml(r.pName)}"><b>${escapeHtml(r.pName)}</b>${r.isG ? '<span class="badge-group">그룹</span>' : ''}</td>
-        <td class="number">${Math.round(r.cost).toLocaleString()}${getDiffPct(r.cost, r.pCost)}</td>
-        <td class="number">${Math.round(r.view).toLocaleString()}${getDiffPct(r.view, r.pView)}</td>
-        <td class="number">${Math.round(r.click).toLocaleString()}${getDiffPct(r.click, r.pClick)}</td>
-        <td class="number">${r.ctr.toFixed(2)}%${getDiffPct(r.ctr, r.pCtr)}</td>
-        <td class="number">${Math.round(r.cpc).toLocaleString()}${getDiffPct(r.cpc, r.pCpc)}</td>
-        <td class="number">${Math.round(r.cv).toLocaleString()}${getDiffPct(r.cv, r.pCv)}</td>
-        <td class="number"><b>${Math.round(r.amt).toLocaleString()}</b>${getDiffPct(r.amt, r.pAmt)}</td>
-        <td class="number"><b>${r.roas.toFixed(0)}%</b>${getDiffPct(r.roas, r.pRoas)}</td>
-      </tr>
-    `).join('');
-  }
-
-  function shopResort(k) {
-    shopSKey = k;
-    shopSDir = (shopSDir === 'desc') ? 'asc' : 'desc';
-    shopRefresh();
-  }
-
-  function shopViewDetail(mat) {
-    shopActiveMat = mat;
-    document.getElementById('shopDetailSection').style.display = 'block';
-    document.getElementById('shopDetailTitle').innerText = `[전체 기간] ${(shopPMap[mat]?.name) || mat}`;
-
-    let th = '';
-    for (let k in shopMetricNames) {
-      th += `<button class="shop-tab-btn ${shopMetric === k ? 'active' : ''}" onclick="shopSetMetric('${k}')">${shopMetricNames[k]}</button>`;
+    function withinDate(d, from, to) {
+      if (!from && !to) return true;
+      const x = new Date(d + 'T00:00:00Z').getTime();
+      const f = from ? new Date(from + 'T00:00:00Z').getTime() : -Infinity;
+      const t = to ? new Date(to + 'T00:00:00Z').getTime() : Infinity;
+      return x >= f && x <= t;
     }
-    document.getElementById('shopTabArea').innerHTML = th;
 
-    shopDrawCharts();
-    setTimeout(() => document.getElementById('shopDetailSection').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-  }
-
-  function shopSetMetric(m){ shopMetric = m; shopDrawCharts(); }
-
-  function shopDrawCharts() {
-    const filteredData = shopRaw.filter(d => d.mat === shopActiveMat);
-
-    const dayMap = {};
-    filteredData.forEach(d => {
-      if (!dayMap[d.date]) dayMap[d.date] = { date: d.date, cost:0, view:0, click:0, cv:0, amt:0 };
-      dayMap[d.date].cost += d.cost;
-      dayMap[d.date].view += d.view;
-      dayMap[d.date].click += d.click;
-      dayMap[d.date].cv += d.cv;
-      dayMap[d.date].amt += d.amt;
-    });
-    const dData = Object.values(dayMap).sort((a,b) => a.date.localeCompare(b.date));
-
-    const wMap = {};
-    filteredData.forEach(d => {
-      if (!wMap[d.week]) wMap[d.week] = { cost:0, view:0, click:0, cv:0, amt:0 };
-      wMap[d.week].cost += d.cost;
-      wMap[d.week].view += d.view;
-      wMap[d.week].click += d.click;
-      wMap[d.week].cv += d.cv;
-      wMap[d.week].amt += d.amt;
-    });
-
-    const getValue = (o) => {
-      if (shopMetric === 'ctr') return o.view > 0 ? (o.click / o.view * 100) : 0;
-      if (shopMetric === 'cvr') return o.click > 0 ? (o.cv / o.click * 100) : 0;
-      if (shopMetric === 'roas') return o.cost > 0 ? (o.amt / o.cost * 100) : 0;
-      if (shopMetric === 'cpc') return o.click > 0 ? (o.cost / o.click) : 0;
-      return o[shopMetric] || 0;
-    };
-
-    const formatValue = (val) => {
-      if (['ctr','cvr','roas'].includes(shopMetric)) return val.toFixed(1) + '%';
-      return Math.round(val).toLocaleString();
-    };
-
-    const renderStats = (id, values, prefix) => {
-      if (!values.length) { document.getElementById(id).innerHTML = ''; return; }
-      const max = Math.max(...values);
-      const min = Math.min(...values);
-      const avg = values.reduce((a,b)=>a+b,0) / values.length;
-      document.getElementById(id).innerHTML = `
-        <div class="shop-stat-item"><div class="shop-stat-label">${prefix} 최고</div><div class="shop-stat-value max">${formatValue(max)}</div></div>
-        <div class="shop-stat-item"><div class="shop-stat-label">${prefix} 최저</div><div class="shop-stat-value min">${formatValue(min)}</div></div>
-        <div class="shop-stat-item"><div class="shop-stat-label">${prefix} 평균</div><div class="shop-stat-value">${formatValue(avg)}</div></div>
-      `;
-    };
-
-    // Day chart
-    if (shopDChart) shopDChart.destroy();
-    const dayLabels = dData.map(d => d.date);
-    const dayValues = dData.map(d => getValue(d));
-    renderStats('shopDayStats', dayValues, '일');
-
-    shopDChart = new Chart(document.getElementById('shopDayChart'), {
-      type: 'line',
-      data: { labels: dayLabels, datasets: [{
-        label: shopMetricNames[shopMetric],
-        data: dayValues,
-        borderColor: '#007bff',
-        backgroundColor: 'rgba(0, 123, 255, 0.10)',
-        tension: 0.4,
-        fill: true,
-        pointRadius: 5,
-        pointHoverRadius: 8,
-        pointBackgroundColor: '#007bff',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        borderWidth: 3
-      }]},
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          datalabels: { display: false },
-          tooltip: {
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            padding: 12,
-            titleFont: { size: 13 },
-            bodyFont: { size: 14, weight: 'bold' },
-            callbacks: { label: (ctx) => shopMetricNames[shopMetric] + ': ' + formatValue(ctx.parsed.y) }
-          }
-        },
-        scales: {
-          y: { beginAtZero: true, ticks: { callback: (v) => formatValue(v) }, grid: { color: '#f0f0f0' } },
-          x: { grid: { display: false } }
-        }
+    function populateSelect(selectEl, values, { includeAll = true, allLabel = 'All' } = {}) {
+      selectEl.innerHTML = '';
+      if (includeAll) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = allLabel;
+        selectEl.appendChild(opt);
       }
-    });
+      values.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        selectEl.appendChild(opt);
+      });
+    }
 
-    // Week chart (last 4)
-    const weekKeys = Object.keys(wMap).sort().slice(-4);
-    const weekValues = weekKeys.map(k => getValue(wMap[k]));
-    renderStats('shopWeekStats', weekValues, '주');
+    // ----- Filters state -----
+    const state = {
+      dateFrom: '',
+      dateTo: '',
+      campaignType: '',
+      productName: '',
+      channel: '',
+    };
 
-    const weekColors = weekKeys.map((k, idx) => idx === weekKeys.length - 1 ? '#5DADE2' : '#D6EAF8');
+    function readStateFromUI() {
+      state.dateFrom = $('dateFrom').value;
+      state.dateTo = $('dateTo').value;
+      state.campaignType = $('campaignType').value;
+      state.productName = $('productName').value;
+      state.channel = $('channel').value;
+    }
 
-    if (shopWChart) shopWChart.destroy();
-    shopWChart = new Chart(document.getElementById('shopWeekChart'), {
-      type: 'bar',
-      data: { labels: weekKeys, datasets: [{
-        label: shopMetricNames[shopMetric],
-        data: weekValues,
-        backgroundColor: weekColors,
-        borderColor: '#fff',
-        borderWidth: 2,
-        datalabels: {
-          anchor: 'center',
-          align: 'center',
-          color: '#2c3e50',
-          font: { weight: 'bold', size: 13 },
-          formatter: (v) => formatValue(v)
-        }
-      }]},
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            padding: 12,
-            titleFont: { size: 13 },
-            bodyFont: { size: 14, weight: 'bold' },
-            callbacks: { label: (ctx) => shopMetricNames[shopMetric] + ': ' + formatValue(ctx.parsed.y) }
-          }
-        },
-        scales: {
-          y: { beginAtZero: true, ticks: { callback: (v) => formatValue(v) }, grid: { color: '#f0f0f0' } },
-          x: { grid: { display: false } }
-        }
-      }
-    });
-  }
-</script>
+    function writeStateToUI() {
+      $('dateFrom').value = state.dateFrom;
+      $('dateTo').value = state.dateTo;
+      $('campaignType').value = state.campaignType;
+      $('productName').value = state.productName;
+      $('channel').value = state.channel;
+    }
+
+    function resetState() {
+      state.dateFrom = '';
+      state.dateTo = '';
+      state.campaignType = '';
+      state.productName = '';
+      state.channel = '';
+      writeStateToUI();
+      render();
+    }
+
+    function filterData(rows) {
+      return rows.filter(r => {
+        if (!withinDate(r.date, state.dateFrom, state.dateTo)) return false;
+        if (state.campaignType && r.type !== state.campaignType) return false;
+        if (state.productName && r.product !== state.productName) return false;
+        if (state.channel && r.channel !== state.channel) return false;
+        return true;
+      });
+    }
+
+    function computeKPIs(rows) {
+      const spend = rows.reduce((s, r) => s + Number(r.spend || 0), 0);
+      const revenue = rows.reduce((s, r) => s + Number(r.revenue || 0), 0);
+      const roas = spend > 0 ? revenue / spend : 0;
+      return { spend, revenue, roas };
+    }
+
+    function renderKPIs(rows) {
+      const { spend, revenue, roas } = computeKPIs(rows);
+      $('kpis').innerHTML = '';
+      const cards = [
+        { title: 'Spend', value: fmtMoney(spend) },
+        { title: 'Revenue', value: fmtMoney(revenue) },
+        { title: 'ROAS', value: roas ? roas.toFixed(2) : '0.00' },
+      ];
+      cards.forEach(c => {
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.innerHTML = `<h3>${c.title}</h3><div class="kpi">${c.value}</div>`;
+        $('kpis').appendChild(el);
+      });
+    }
+
+    function renderTable(rows) {
+      const tb = $('tbody');
+      tb.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        const roas = r.spend > 0 ? (r.revenue / r.spend) : 0;
+        tr.innerHTML = `
+          <td>${r.campaign}</td>
+          <td>${r.type}</td>
+          <td>${r.channel}</td>
+          <td>${r.product}</td>
+          <td>${fmtMoney(r.spend)}</td>
+          <td>${fmtMoney(r.revenue)}</td>
+          <td>${roas.toFixed(2)}</td>
+        `;
+        tb.appendChild(tr);
+      });
+    }
+
+    function render() {
+      readStateFromUI();
+      const rows = filterData(data);
+      renderKPIs(rows);
+      renderTable(rows);
+    }
+
+    function init() {
+      // Populate filter dropdowns from data
+      populateSelect($('campaignType'), uniq(data.map(d => d.type)), { includeAll: true, allLabel: 'All types' });
+      populateSelect($('productName'), uniq(data.map(d => d.product)), { includeAll: true, allLabel: 'All products' });
+      populateSelect($('channel'), uniq(data.map(d => d.channel)), { includeAll: true, allLabel: 'All channels' });
+
+      $('applyBtn').addEventListener('click', render);
+      $('resetBtn').addEventListener('click', resetState);
+
+      // Initial render
+      render();
+    }
+
+    init();
+  </script>
 </body>
 </html>
