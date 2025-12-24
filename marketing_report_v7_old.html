@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마케팅 성과 종합 리포트 (4주)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 2200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 3px solid #007bff; padding-bottom: 15px; }
+        .header-title-group { display: flex; align-items: baseline; gap: 15px; }
+        .header h1 { font-size: 32px; color: #333; font-weight: bold; }
+        .header-date { font-size: 14px; color: #666; font-weight: normal; background: #f0f0f0; padding: 4px 10px; border-radius: 12px; }
+        
+        .nav-tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #ddd; flex-wrap: wrap; }
+        .nav-tabs button { padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: 14px; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s; }
+        .nav-tabs button:hover { color: #007bff; }
+        .nav-tabs button.active { color: #007bff; border-bottom-color: #007bff; font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .section { margin-bottom: 50px; }
+        .section-title { font-size: 20px; font-weight: bold; color: #333; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #007bff; display:flex; justify-content: space-between; align-items: center; gap:12px; }
+        .controls { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .controls input, .controls select, .controls button { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; height: 36px; }
+        .controls select { max-width: 160px; }
+        .controls button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; transition: background-color 0.3s; white-space: nowrap; }
+        .controls button:hover { background-color: #0056b3; }
+        .controls button.danger { background-color: #dc3545; }
+        .controls button.danger:hover { background-color: #c82333; }
+        .controls button.secondary { background: #6c757d; color: #fff; }
+        .controls button.secondary:hover { background: #5a6268; }
+        .controls button.btn-compact { padding: 8px 8px; font-size: 11px; letter-spacing: -0.5px; }
+        
+        .info-box { background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin-bottom: 20px; border-radius: 4px; font-size: 13px; }
+        .status { padding: 15px; border-radius: 4px; margin-top: 15px; display: none; font-weight: bold; }
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        
+        .table-wrapper { overflow-x: auto; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 20px; max-height: 700px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: auto; }
+        th { padding: 10px 6px; text-align: left; font-weight: bold; color: white; background: #007bff; border-bottom: 2px solid #0056b3; white-space: nowrap; position: sticky; top: 0; cursor: pointer; user-select: none; z-index: 10; }
+        td { padding: 8px 6px; border-bottom: 1px solid #eee; text-align: left; }
+        th:hover { background: #0056b3; }
+        th.sort-asc::after { content: ' ▲'; }
+        th.sort-desc::after { content: ' ▼'; }
+        td.number, th.number { white-space: nowrap; }
+        .text-col { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        tr:hover { background: #f9f9f9; }
+        tr.filtered-out { display: none !important; }
+        tr.low-roas { background-color: #ffecec !important; }
+        tr.total-row, tr.prev-total-row { background-color: #e3f2fd !important; font-weight: bold; border-bottom: 2px solid #bbdefb; }
+        tr.total-row td, tr.prev-total-row td { color: #0d47a1; }
+        tr.total-row:hover, tr.prev-total-row:hover { background-color: #bbdefb !important; }
+        .no-data { text-align: center; padding: 40px 20px; color: #999; font-size: 16px; }
+        .rank-badge { display: inline-block; width: 24px; height: 24px; line-height: 24px; border-radius: 50%; background: #007bff; color: white; font-weight: bold; font-size: 11px; text-align: center; }
+        
+        .detail-row { background: #f7fbff; }
+        .detail-row td div { display: flex; flex-wrap: nowrap; gap: 12px; align-items: center; width: 100%; padding: 6px 4px; font-size: 11px; color: #444; white-space: nowrap; }
+        .detail-row strong { margin-right: 8px; color: #333; font-size: 12px; min-width: 80px; }
+        .badge-mini { font-size: 11px; color: #666; margin-left: 4px; white-space: nowrap; }
+        .hide-changes .badge-mini { display: none !important; }
+        .pagination { display: flex; gap: 8px; align-items: center; font-size: 12px; margin: 10px 0; }
+        .pagination button { padding: 6px 10px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px; }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .chart-container { background: #f9f9f9; border-radius: 8px; padding: 20px; margin-bottom: 30px; border: 1px solid #ddd; }
+        .chart-wrapper { position: relative; height: 220px; width: 100%; }
+        /* 4개씩 3줄 */
+        .chart-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; row-gap: 32px; }
+        .chart-caption { font-size: 12px; color: #444; margin-bottom: 4px; }
+        .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)); gap: 16px; }
+
+        /* 카드 6개씩 2줄 */
+        .stat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+        .stat-card { background: #f9fafb; border: 1px solid #e3e6ea; border-radius: 8px; padding: 16px; min-height: 140px; display: flex; flex-direction: column; gap: 12px; }
+        .stat-title { font-size: 13px; font-weight: 700; color: #444; }
+        .stat-value-main { font-size: 28px; font-weight: 800; color: #111; }
+        .delta-box { background: #fff; border: 1px solid #e3e6ea; border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+        .delta-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #444; }
+        .delta-label { color: #444; }
+        .delta-val { font-weight: 700; }
+        .delta-up { color: #2e8b57; }
+        .delta-down { color: #c0392b; }
+        .delta-icon { margin-right: 6px; font-weight: 900; }
+        
+        /* 순위 분석 스타일 */
+        .rank-heatmap-table th, .rank-heatmap-table td { text-align: center; border: 1px solid #eee; padding: 8px; font-size: 11px; }
+        .rank-heatmap-table th { background: #f8f9fa; font-weight: bold; }
+        
+        /* 드래그 앤 드롭 업로드 영역 */
+        .upload-dropzone { 
+            position: relative; border: 2px dashed #ddd; border-radius: 8px; padding: 30px; text-align: center; 
+            cursor: pointer; transition: all 0.3s; background: #fafafa; min-height: 150px; display: flex; 
+            flex-direction: column; align-items: center; justify-content: center; 
+        }
+        .upload-dropzone:hover { border-color: #007bff; background: #f0f7ff; }
+        .upload-dropzone.uploaded { border-color: #28a745; background: #f0fff4; }
+        .upload-icon { font-size: 48px; margin-bottom: 10px; }
+        .upload-label { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 5px; }
+        .upload-hint { font-size: 12px; color: #666; }
+        .upload-check { 
+            position: absolute; top: 10px; right: 10px; font-size: 32px; color: #28a745; 
+            opacity: 0; transition: opacity 0.3s; 
+        }
+        .upload-dropzone.uploaded .upload-check { opacity: 1; }
+        
+        /* TOP10 고정 테이블 */
+        .top10-container { 
+            position: sticky; top: 0; z-index: 100; background: white; padding: 15px 0; 
+            border-bottom: 2px solid #ddd; margin-bottom: 20px; 
+        }
+        .top10-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .top10-table { font-size: 11px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+        .top10-table th { background: #007bff; color: white; padding: 6px; text-align: center; font-size: 11px; }
+        .top10-table td { padding: 5px 6px; border-bottom: 1px solid #eee; text-align: left; }
+        .top10-table tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="header-title-group">
+            <h1>📊 마케팅 성과 종합 리포트 (최근 4주)</h1>
+            <span id="mainDateRange" class="header-date"></span>
+        </div>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab(event, 'upload')">📤 데이터 업로드</button>
+        <button class="tab-btn" onclick="switchTab(event, 'overview')">📈 성과 요약</button>
+        <button class="tab-btn" onclick="switchTab(event, 'rank')">🏆 순위 분석</button>
+        <button class="tab-btn" onclick="switchTab(event, 'campaign')">🎯 캠페인 분석</button>
+        <button class="tab-btn" onclick="switchTab(event, 'adgroup')">🧩 광고그룹 분석</button>
+        <button class="tab-btn" onclick="switchTab(event, 'keyword')">🔍 키워드 분석</button>
+        <button class="tab-btn" onclick="switchTab(event, 'product')">🛍️ 상품 분석</button>
+        <button class="tab-btn" onclick="switchTab(event, 'media')">📰 매체별 분석</button>
+        <button class="tab-btn" onclick="switchTab(event, 'efficiency')">⚡ 효율분석</button>
+        <button class="tab-btn" onclick="switchTab(event, 'cpc')">💲 CPC 분석</button>
+        <button class="tab-btn" onclick="switchTab(event, 'device')">📱 디바이스 분석</button>
+    </div>
+
+    <!-- TAB 1: Upload -->
+    <div id="upload" class="tab-content active">
+        <div class="section" id="section-upload">
+            <div class="section-title">
+                <span>📤 데이터 업로드</span>
+            </div>
+            <div class="info-box">
+                💡 4주간 Naver 광고 보고서 파일들을 드래그&드롭 또는 클릭하여 업로드하세요.<br>
+                • RAW (일/주별): 시간대/요일 포함 (A~O 열) - CSV/XLSX<br>
+                • RAW2 (검색어): 검색어 포함 (A~O 열, 검색/콘텐츠 매체 포함) - CSV/XLSX<br>
+                • 소재 (상품 성과): 상품별 성과 데이터 - CSV<br>
+                • 상품 TSV: 상품 정보 매핑 파일 - TSV<br>
+                두 파일 모두 2행부터 데이터가 시작됩니다.
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px;">
+                <div class="upload-dropzone" id="dropzoneRaw" onclick="document.getElementById('fileInputRaw').click()">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-label">RAW (일/주별)</div>
+                    <div class="upload-hint">CSV/XLSX 파일</div>
+                    <div class="upload-check" id="checkRaw">✓</div>
+                    <input type="file" id="fileInputRaw" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw')" style="display: none;">
+                </div>
+                <div class="upload-dropzone" id="dropzoneRaw2" onclick="document.getElementById('fileInputRaw2').click()">
+                    <div class="upload-icon">🔍</div>
+                    <div class="upload-label">검색어 (RAW2)</div>
+                    <div class="upload-hint">CSV/XLSX 파일</div>
+                    <div class="upload-check" id="checkRaw2">✓</div>
+                    <input type="file" id="fileInputRaw2" accept=".csv,.xlsx,.xls" onchange="handleUpload(event, 'raw2')" style="display: none;">
+                </div>
+                <div class="upload-dropzone" id="dropzoneProduct" onclick="document.getElementById('fileInputProduct').click()">
+                    <div class="upload-icon">🛍️</div>
+                    <div class="upload-label">소재 (상품 성과)</div>
+                    <div class="upload-hint">CSV 파일</div>
+                    <div class="upload-check" id="checkProduct">✓</div>
+                    <input type="file" id="fileInputProduct" accept=".csv" onchange="handleUpload(event, 'product')" style="display: none;">
+                </div>
+                <div class="upload-dropzone" id="dropzoneTSV" onclick="document.getElementById('fileInputTSV').click()">
+                    <div class="upload-icon">📋</div>
+                    <div class="upload-label">상품 TSV</div>
+                    <div class="upload-hint">TSV 파일</div>
+                    <div class="upload-check" id="checkTSV">✓</div>
+                    <input type="file" id="fileInputTSV" accept=".tsv" onchange="handleUpload(event, 'tsv')" style="display: none;">
+                </div>
+            </div>
+            <div id="uploadStatus" class="status"></div>
+        </div>
+    </div>
+
+    <!-- TAB 2: Overview -->
+    <div id="overview" class="tab-content">
+        <div class="section" id="section-overview">
+            <div class="section-title">
+                <span>📈 성과 요약</span>
+            </div>
+            <div id="statsContainer" class="stat-grid"></div>
+            
+            <!-- 주간 추이 차트 -->
+            <div class="chart-container">
+                <h3 id="weekCompareTitle" style="margin-bottom: 16px;">주간 성과 추이 (최근 4주)</h3>
+                <div class="chart-grid" id="overviewCharts"></div>
+            </div>
+
+            <!-- 성과 비중 분석 -->
+            <div class="chart-container" style="margin-top: 30px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">📊 항목별 성과 비중 분석 (100%)</h3>
+                    <div class="controls" style="margin: 0;">
+                        <select id="stackChartType" onchange="updateStackedChart()">
+                            <option value="campaignType">캠페인 유형별</option>
+                            <option value="campaign" selected>캠페인별</option>
+                            <option value="adgroup">광고그룹별</option>
+                            <option value="device">디바이스별</option>
+                        </select>
+                        <select id="stackLimit" onchange="updateStackedChart()">
+                            <option value="0" selected>전체 보기</option>
+                            <option value="5">상위 5개</option>
+                            <option value="10">상위 10개</option>
+                            <option value="20">상위 20개</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-wrapper" style="height: 400px;">
+                    <canvas id="stackedBarChart"></canvas>
+                </div>
+                <p style="font-size:12px; color:#666; text-align:right; margin-top:5px;">* 차트의 막대나 범례를 클릭하면 해당 항목이 강조됩니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB New: Rank Analysis -->
+    <div id="rank" class="tab-content">
+        <div class="section">
+            <div class="section-title">
+                <span>🏆 순위 분석</span>
+            </div>
+            
+            <!-- TOP10 테이블 -->
+            <div class="top10-container">
+                <h3 style="margin-bottom: 12px; font-size: 16px;">🔝 검색어 TOP 10</h3>
+                <div class="top10-grid" id="top10Grid"></div>
+            </div>
+            
+            <div class="rank-panel" style="margin-bottom:20px; background:#fff; border:1px solid #ddd; padding:20px; border-radius:8px;">
+                <h3>📉 검색어별 순위 추이 (최근 14일)</h3>
+                <div class="controls" style="margin-top:10px;">
+                    <select id="trendCT" onchange="updateRankTrend()"><option value="">캠페인 유형 전체</option></select>
+                    <select id="trendCamp" onchange="updateRankTrend()"><option value="">캠페인 전체</option></select>
+                    <select id="trendAdg" onchange="updateRankTrend()"><option value="">광고그룹 전체</option></select>
+                    <select id="trendMedia" onchange="updateRankTrend()"><option value="">매체 전체</option></select>
+                    <input type="text" id="trendKw" placeholder="검색어 (쉼표로 구분: 키워드1, 키워드2)" style="width:300px;" onchange="updateRankTrend()">
+                    <button onclick="updateRankTrend()">조회</button>
+                </div>
+                <div style="height:350px;">
+                    <canvas id="rankTrendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="rank-panel" style="background:#fff; border:1px solid #ddd; padding:20px; border-radius:8px;">
+                <h3>⏰ 시간대/요일별 평균 순위 (Heatmap)</h3>
+                <div class="controls" style="margin-top:10px;">
+                    <select id="heatCT" onchange="updateRankHeatmap()"><option value="">캠페인 유형 전체</option></select>
+                    <select id="heatCamp" onchange="updateRankHeatmap()"><option value="">캠페인 전체</option></select>
+                    <select id="heatAdg" onchange="updateRankHeatmap()"><option value="">광고그룹 전체</option></select>
+                    <select id="heatMedia" onchange="updateRankHeatmap()"><option value="">매체 전체</option></select>
+                    <button onclick="updateRankHeatmap()">분석</button>
+                </div>
+                <div id="rankHeatmapContainer" style="overflow-x:auto; margin-top:15px;">
+                    <p style="padding:20px; text-align:center; color:#999;">데이터를 필터링하고 '분석' 버튼을 누르면 순위표가 표시됩니다.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: Campaign -->
+    <div id="campaign" class="tab-content">
+        <div class="section" id="section-campaign">
+            <div class="section-title">
+                <span>🎯 캠페인 성과 분석</span>
+            </div>
+            <div class="controls">
+                <input class="text-col" type="text" id="campaignFilter" placeholder="캠페인 검색" onkeyup="updateCampaignTable()">
+                <select id="campaignTypeFilter" onchange="updateCampaignTable()"><option value="">캠페인 유형 전체</option></select>
+                <select id="campaignDeviceFilter" onchange="updateCampaignTable()"><option value="">전체 디바이스</option><option value="PC">PC</option><option value="모바일">모바일</option></select>
+                <select id="campaignCampaignFilter" onchange="updateCampaignTable()"><option value="">캠페인 전체</option></select>
+                <select id="campaignAdgroupFilter" onchange="updateCampaignTable()"><option value="">광고그룹 전체</option></select>
+                <input type="number" id="standardROAS" placeholder="ROAS 기준 %" min="0" step="10">
+                <button onclick="highlightLowROAS('campaignBody', 'standardROAS')">ROAS 적용</button>
+                <button class="filter-red" onclick="filterRedRows('campaignBody')">필터링</button>
+                <button class="roas-up" onclick="applyROASFilter('campaignBody', 'up', 'standardROAS')">↑</button>
+                <button class="roas-down" onclick="applyROASFilter('campaignBody', 'down', 'standardROAS')">↓</button>
+                <button class="danger" onclick="resetCampaign()">초기화</button>
+                <button class="secondary" onclick="toggleChangeBadge('campaignTable')">증감율 On/Off</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="campaignTable">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable('campaignTable', 0)">순위</th>
+                        <th onclick="sortTable('campaignTable', 1)">캠페인</th>
+                        <th onclick="sortTable('campaignTable', 2)">캠페인유형</th>
+                        <th onclick="sortTable('campaignTable', 3)" class="number">광고비</th>
+                        <th onclick="sortTable('campaignTable', 4)" class="number">노출수</th>
+                        <th onclick="sortTable('campaignTable', 5)" class="number">클릭수</th>
+                        <th onclick="sortTable('campaignTable', 6)" class="number">클릭율</th>
+                        <th onclick="sortTable('campaignTable', 7)" class="number">CPC</th>
+                        <th onclick="sortTable('campaignTable', 8)" class="number">전환수</th>
+                        <th onclick="sortTable('campaignTable', 9)" class="number">전환율</th>
+                        <th onclick="sortTable('campaignTable', 10)" class="number">매출액</th>
+                        <th onclick="sortTable('campaignTable', 11)" class="number">전환당비용</th>
+                        <th onclick="sortTable('campaignTable', 12)" class="number">ROAS</th>
+                    </tr>
+                    </thead>
+                    <tbody id="campaignBody">
+                    <tr><td colspan="13" class="no-data">데이터를 업로드해주세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: Adgroup -->
+    <div id="adgroup" class="tab-content">
+        <div class="section" id="section-adgroup">
+            <div class="section-title">
+                <span>🧩 광고그룹 성과 분석</span>
+            </div>
+            <div class="controls">
+                <input class="text-col" type="text" id="adgroupFilter" placeholder="광고그룹 검색" onkeyup="updateAdgroupTable()">
+                <select id="adgroupCampaignFilter" onchange="updateAdgroupTable()"><option value="">캠페인 전체</option></select>
+                <select id="adgroupCampaignTypeFilter" onchange="updateAdgroupTable()"><option value="">캠페인 유형 전체</option></select>
+                <select id="adgroupDeviceFilter" onchange="updateAdgroupTable()"><option value="">전체 디바이스</option><option value="PC">PC</option><option value="모바일">모바일</option></select>
+                <input type="number" id="standardROAS_AG" placeholder="ROAS 기준 %" min="0" step="10">
+                <button onclick="highlightLowROAS('adgroupBody', 'standardROAS_AG')">ROAS 적용</button>
+                <button class="filter-red" onclick="filterRedRows('adgroupBody')">필터링</button>
+                <button class="roas-up" onclick="applyROASFilter('adgroupBody', 'up', 'standardROAS_AG')">↑</button>
+                <button class="roas-down" onclick="applyROASFilter('adgroupBody', 'down', 'standardROAS_AG')">↓</button>
+                <button class="danger" onclick="resetAdgroup()">초기화</button>
+                <button class="secondary" onclick="toggleChangeBadge('adgroupTable')">증감율 On/Off</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="adgroupTable">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable('adgroupTable', 0)">순위</th>
+                        <th onclick="sortTable('adgroupTable', 1)">광고그룹</th>
+                        <th onclick="sortTable('adgroupTable', 2)">캠페인</th>
+                        <th onclick="sortTable('adgroupTable', 3)">캠페인유형</th>
+                        <th onclick="sortTable('adgroupTable', 4)" class="number">광고비</th>
+                        <th onclick="sortTable('adgroupTable', 5)" class="number">노출수</th>
+                        <th onclick="sortTable('adgroupTable', 6)" class="number">클릭수</th>
+                        <th onclick="sortTable('adgroupTable', 7)" class="number">클릭율</th>
+                        <th onclick="sortTable('adgroupTable', 8)" class="number">CPC</th>
+                        <th onclick="sortTable('adgroupTable', 9)" class="number">전환수</th>
+                        <th onclick="sortTable('adgroupTable', 10)" class="number">전환율</th>
+                        <th onclick="sortTable('adgroupTable', 11)" class="number">매출액</th>
+                        <th onclick="sortTable('adgroupTable', 12)" class="number">전환당비용</th>
+                        <th onclick="sortTable('adgroupTable', 13)" class="number">ROAS</th>
+                    </tr>
+                    </thead>
+                    <tbody id="adgroupBody">
+                    <tr><td colspan="14" class="no-data">데이터를 업로드해주세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: Keyword -->
+    <div id="keyword" class="tab-content">
+        <div class="section" id="section-keyword">
+            <div class="section-title">
+                <span>🔍 키워드 성과 분석</span>
+            </div>
+            <div class="controls">
+                <input class="text-col" type="text" id="keywordSearch" placeholder="키워드 검색" onkeyup="updateKeywordTable(true)">
+                <select id="keywordCampaignTypeFilter" onchange="updateKeywordTable(true)"><option value="">캠페인 유형 전체</option></select>
+                <select id="keywordCampaignFilter" onchange="updateKeywordTable(true)"><option value="">캠페인 전체</option></select>
+                <select id="keywordAdgroupFilter" onchange="updateKeywordTable(true)"><option value="">광고그룹 전체</option></select>
+                <select id="deviceFilter" onchange="updateKeywordTable(true)"><option value="">전체 디바이스</option><option value="PC">PC</option><option value="모바일">모바일</option></select>
+                <input type="number" id="standardROAS2" placeholder="ROAS 기준 %" min="0" step="10">
+                <button onclick="highlightLowROAS('keywordBody', 'standardROAS2')">ROAS 적용</button>
+                <button class="filter-red" onclick="filterRedRows('keywordBody')">필터링</button>
+                <button class="roas-up" onclick="applyROASFilter('keywordBody', 'up', 'standardROAS2')">↑</button>
+                <button class="roas-down" onclick="applyROASFilter('keywordBody', 'down', 'standardROAS2')">↓</button>
+                <button class="danger" onclick="resetKeyword()">초기화</button>
+                <button class="secondary" onclick="toggleChangeBadge('keywordTable')">증감율 On/Off</button>
+            </div>
+            <div class="pagination">
+                <button id="kwPrev" onclick="changeKeywordPage(-1)">이전</button>
+                <span id="kwPageInfo">0 / 0</span>
+                <button id="kwNext" onclick="changeKeywordPage(1)">다음</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="keywordTable">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable('keywordTable', 0)">순위</th>
+                        <th onclick="sortTable('keywordTable', 1)">검색어</th>
+                        <th onclick="sortTable('keywordTable', 2)">캠페인</th>
+                        <th onclick="sortTable('keywordTable', 3)">광고그룹</th>
+                        <th onclick="sortTable('keywordTable', 4)" class="number">광고비</th>
+                        <th onclick="sortTable('keywordTable', 5)" class="number">노출수</th>
+                        <th onclick="sortTable('keywordTable', 6)" class="number">클릭수</th>
+                        <th onclick="sortTable('keywordTable', 7)" class="number">클릭율</th>
+                        <th onclick="sortTable('keywordTable', 8)" class="number">CPC</th>
+                        <th onclick="sortTable('keywordTable', 9)" class="number">전환수</th>
+                        <th onclick="sortTable('keywordTable', 10)" class="number">전환율</th>
+                        <th onclick="sortTable('keywordTable', 11)" class="number">매출액</th>
+                        <th onclick="sortTable('keywordTable', 12)" class="number">전환당비용</th>
+                        <th onclick="sortTable('keywordTable', 13)" class="number">ROAS</th>
+                    </tr>
+                    </thead>
+                    <tbody id="keywordBody">
+                    <tr><td colspan="14" class="no-data">데이터를 업로드해주세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5.5: Product Analysis -->
+    <div id="product" class="tab-content">
+        <div class="section" id="section-product">
+            <div class="section-title">
+                <span>🛍️ 상품 성과 분석</span>
+            </div>
+            <div class="controls">
+                <input class="text-col" type="text" id="productFilter" placeholder="상품명 검색" onkeyup="updateProductTable()">
+                <select id="productCampaignFilter" onchange="updateProductTable()"><option value="">캠페인 전체</option></select>
+                <select id="productAdgroupFilter" onchange="updateProductTable()"><option value="">광고그룹 전체</option></select>
+                <select id="productDeviceFilter" onchange="updateProductTable()"><option value="">전체 디바이스</option><option value="PC">PC</option><option value="모바일">모바일</option></select>
+                <input type="number" id="standardROAS_PROD" placeholder="ROAS 기준 %" min="0" step="10">
+                <button onclick="highlightLowROAS('productBody', 'standardROAS_PROD')">ROAS 적용</button>
+                <button class="filter-red" onclick="filterRedRows('productBody')">필터링</button>
+                <button class="roas-up" onclick="applyROASFilter('productBody', 'up', 'standardROAS_PROD')">↑</button>
+                <button class="roas-down" onclick="applyROASFilter('productBody', 'down', 'standardROAS_PROD')">↓</button>
+                <button class="danger" onclick="resetProduct()">초기화</button>
+                <button class="secondary" onclick="toggleChangeBadge('productTable')">증감율 On/Off</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="productTable">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable('productTable', 0)">순위</th>
+                        <th onclick="sortTable('productTable', 1)">이미지</th>
+                        <th onclick="sortTable('productTable', 2)" style="text-align:left;">상품명</th>
+                        <th onclick="sortTable('productTable', 3)">캠페인</th>
+                        <th onclick="sortTable('productTable', 4)">광고그룹</th>
+                        <th onclick="sortTable('productTable', 5)" class="number">광고비</th>
+                        <th onclick="sortTable('productTable', 6)" class="number">노출수</th>
+                        <th onclick="sortTable('productTable', 7)" class="number">클릭수</th>
+                        <th onclick="sortTable('productTable', 8)" class="number">클릭율</th>
+                        <th onclick="sortTable('productTable', 9)" class="number">CPC</th>
+                        <th onclick="sortTable('productTable', 10)" class="number">전환수</th>
+                        <th onclick="sortTable('productTable', 11)" class="number">전환율</th>
+                        <th onclick="sortTable('productTable', 12)" class="number">매출액</th>
+                        <th onclick="sortTable('productTable', 13)" class="number">전환당비용</th>
+                        <th onclick="sortTable('productTable', 14)" class="number">ROAS</th>
+                    </tr>
+                    </thead>
+                    <tbody id="productBody">
+                    <tr><td colspan="15" class="no-data">데이터를 업로드해주세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 6: Media -->
+    <div id="media" class="tab-content">
+        <div class="section" id="section-media">
+            <div class="section-title">
+                <span>📰 매체별 분석</span>
+            </div>
+            <div class="controls">
+                <input class="text-col" type="text" id="mediaFilter" placeholder="매체 검색" onkeyup="updateMediaTable()">
+                <select id="mediaCampaignTypeFilter" onchange="updateMediaTable()"><option value="">캠페인 유형 전체</option></select>
+                <select id="mediaCampaignFilter" onchange="updateMediaTable()"><option value="">캠페인 전체</option></select>
+                <select id="mediaAdgroupFilter" onchange="updateMediaTable()"><option value="">광고그룹 전체</option></select>
+                <select id="mediaDeviceFilter" onchange="updateMediaTable()"><option value="">전체 디바이스</option><option value="PC">PC</option><option value="모바일">모바일</option></select>
+                <input type="number" id="standardROAS_MEDIA" placeholder="ROAS 기준 %" min="0" step="10">
+                <button onclick="highlightLowROAS('mediaBody', 'standardROAS_MEDIA')">ROAS 적용</button>
+                <button class="filter-red" onclick="filterRedRows('mediaBody')">필터링</button>
+                <button class="roas-up" onclick="applyROASFilter('mediaBody', 'up', 'standardROAS_MEDIA')">↑</button>
+                <button class="roas-down" onclick="applyROASFilter('mediaBody', 'down', 'standardROAS_MEDIA')">↓</button>
+                <button class="danger" onclick="resetMedia()">초기화</button>
+                <button class="secondary" onclick="toggleChangeBadge('mediaTable')">증감율 On/Off</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="mediaTable">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable('mediaTable', 0)">순위</th>
+                        <th onclick="sortTable('mediaTable', 1)">매체</th>
+                        <th onclick="sortTable('mediaTable', 2)">캠페인</th>
+                        <th onclick="sortTable('mediaTable', 3)">광고그룹</th>
+                        <th onclick="sortTable('mediaTable', 4)">디바이스</th>
+                        <th onclick="sortTable('mediaTable', 5)">캠페인유형</th>
+                        <th onclick="sortTable('mediaTable', 6)" class="number">광고비</th>
+                        <th onclick="sortTable('mediaTable', 7)" class="number">노출수</th>
+                        <th onclick="sortTable('mediaTable', 8)" class="number">클릭수</th>
+                        <th onclick="sortTable('mediaTable', 9)" class="number">클릭율</th>
+                        <th onclick="sortTable('mediaTable', 10)" class="number">CPC</th>
+                        <th onclick="sortTable('mediaTable', 11)" class="number">전환수</th>
+                        <th onclick="sortTable('mediaTable', 12)" class="number">전환율</th>
+                        <th onclick="sortTable('mediaTable', 13)" class="number">매출액</th>
+                        <th onclick="sortTable('mediaTable', 14)" class="number">전환당비용</th>
+                        <th onclick="sortTable('mediaTable', 15)" class="number">ROAS</th>
+                    </tr>
+                    </thead>
+                    <tbody id="mediaBody">
+                    <tr><td colspan="16" class="no-data">데이터를 업로드해주세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 7: Efficiency -->
+    <div id="efficiency" class="tab-content">
+        <div class="section" id="section-efficiency">
+            <div class="section-title">
+                <span>⚡ 효율분석</span>
+            </div>
+            <div class="info-box">💡 필터링 조건(최소 광고비, 최소 전환수 등)을 모두 만족하면 효율 GOOD, 아니면 BAD.</div>
+            <div class="controls">
+                <input class="text-col" type="text" id="brandExclude" placeholder="제외 키워드(콤마)">
+                <select id="efficiencyCampaignTypeFilter"><option value="">캠페인 유형 전체</option></select>
+                <select id="efficiencyCampaignFilter"><option value="">캠페인 전체</option></select>
+                <select id="efficiencyAdgroupFilter"><option value="">광고그룹 전체</option></select>
+                <input type="number" id="filterCostMin" placeholder="최소 광고비">
+                <input type="number" id="filterConvMin" placeholder="최소 전환수">
+                <input type="number" id="filterROASMin" placeholder="최소 ROAS">
+                <input type="number" id="filterCPAMin" placeholder="최소 전환당비용">
+                <button onclick="updateEfficiencyAnalysis()">🔍 적용</button>
+                <button class="danger" onclick="resetEfficiency()">초기화</button>
+                <button class="secondary btn-compact" onclick="toggleChangeBadge('goodEfficiencyTable'); toggleChangeBadge('badEfficiencyTable');">증감율 On/Off</button>
+            </div>
+            <h3 style="margin: 20px 0 10px; color: #333;">✅ 효율 GOOD (필터 충족)</h3>
+            <div class="table-wrapper">
+                <table id="goodEfficiencyTable">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable('goodEfficiencyTable',0)">순위</th>
+                        <th onclick="sortTable('goodEfficiencyTable',1)">캠페인유형</th>
+                        <th onclick="sortTable('goodEfficiencyTable',2)">검색어</th>
+                        <th onclick="sortTable('goodEfficiencyTable',3)">캠페인</th>
+                        <th onclick="sortTable('goodEfficiencyTable',4)">광고그룹</th>
+                        <th onclick="sortTable('goodEfficiencyTable',5)" class="number">광고비</th>
+                        <th onclick="sortTable('goodEfficiencyTable',6)" class="number">노출수</th>
+                        <th onclick="sortTable('goodEfficiencyTable',7)" class="number">클릭수</th>
+                        <th onclick="sortTable('goodEfficiencyTable',8)" class="number">클릭율</th>
+                        <th onclick="sortTable('goodEfficiencyTable',9)" class="number">CPC</th>
+                        <th onclick="sortTable('goodEfficiencyTable',10)" class="number">전환수</th>
+                        <th onclick="sortTable('goodEfficiencyTable',11)" class="number">전환당비용</th>
+                        <th onclick="sortTable('goodEfficiencyTable',12)" class="number">ROAS</th>
+                    </tr>
+                    </thead>
+                    <tbody id="goodEfficiencyBody">
+                    <tr><td colspan="13" class="no-data">데이터를 업로드해주세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <h3 style="margin: 20px 0 10px; color: #333;">❌ 효율 BAD (필터 미충족)</h3>
+            <div class="table-wrapper">
+                <table id="badEfficiencyTable">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable('badEfficiencyTable',0)">순위</th>
+                        <th onclick="sortTable('badEfficiencyTable',1)">캠페인유형</th>
+                        <th onclick="sortTable('badEfficiencyTable',2)">검색어</th>
+                        <th onclick="sortTable('badEfficiencyTable',3)">캠페인</th>
+                        <th onclick="sortTable('badEfficiencyTable',4)">광고그룹</th>
+                        <th onclick="sortTable('badEfficiencyTable',5)" class="number">광고비</th>
+                        <th onclick="sortTable('badEfficiencyTable',6)" class="number">노출수</th>
+                        <th onclick="sortTable('badEfficiencyTable',7)" class="number">클릭수</th>
+                        <th onclick="sortTable('badEfficiencyTable',8)" class="number">클릭율</th>
+                        <th onclick="sortTable('badEfficiencyTable',9)" class="number">CPC</th>
+                        <th onclick="sortTable('badEfficiencyTable',10)" class="number">전환수</th>
+                        <th onclick="sortTable('badEfficiencyTable',11)" class="number">전환당비용</th>
+                        <th onclick="sortTable('badEfficiencyTable',12)" class="number">ROAS</th>
+                    </tr>
+                    </thead>
+                    <tbody id="badEfficiencyBody">
+                    <tr><td colspan="13" class="no-data">데이터를 업로드해주세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 8: CPC -->
+    <div id="cpc" class="tab-content">
+        <div class="section" id="section-cpc">
+            <div class="section-title">
+                <span>💲 CPC 분석</span>
+            </div>
+            <div class="info-box">💡 필터 조건 충족 시, CPC 증감율에 따라 분류됩니다.</div>
+            <div class="controls">
+                <input class="text-col" type="text" id="cpcBrandExclude" placeholder="제외 키워드(콤마)">
+                <select id="cpcCampaignTypeFilter"><option value="">캠페인 유형 전체</option></select>
+                <select id="cpcCampaignFilter"><option value="">캠페인 전체</option></select>
+                <select id="cpcAdgroupFilter"><option value="">광고그룹 전체</option></select>
+                <input type="number" id="cpcCostMin" placeholder="최소 광고비">
+                <input type="number" id="cpcConvMin" placeholder="최소 전환수">
+                <input type="number" id="cpcROASMin" placeholder="최소 ROAS">
+                <input type="number" id="cpcCPAMax" placeholder="최대 전환당비용">
+                <input type="number" id="cpcChangeThreshold" placeholder="CPC 증감% 기준">
+                <button onclick="updateCPCAnalysis()">🔍 적용</button>
+                <button class="danger" onclick="resetCPC()">초기화</button>
+                <button class="secondary btn-compact" onclick="toggleChangeBadge('cpcUpTable'); toggleChangeBadge('cpcDownTable');">증감율 On/Off</button>
+            </div>
+            <h3 style="margin: 20px 0 10px; color: #333;">🔺 CPC 상승</h3>
+            <div class="table-wrapper">
+                <table id="cpcUpTable">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable('cpcUpTable',0)">순위</th>
+                        <th onclick="sortTable('cpcUpTable',1)">캠페인유형</th>
+                        <th onclick="sortTable('cpcUpTable',2)">검색어</th>
+                        <th onclick="sortTable('cpcUpTable',3)">캠페인</th>
+                        <th onclick="sortTable('cpcUpTable',4)">광고그룹</th>
+                        <th onclick="sortTable('cpcUpTable',5)" class="number">CPC</th>
+                        <th onclick="sortTable('cpcUpTable',6)" class="number">CPC증감%</th>
+                        <th onclick="sortTable('cpcUpTable',7)" class="number">광고비</th>
+                        <th onclick="sortTable('cpcUpTable',8)" class="number">광고비(%)</th>
+                        <th onclick="sortTable('cpcUpTable',9)" class="number">노출수</th>
+                        <th onclick="sortTable('cpcUpTable',10)" class="number">클릭수</th>
+                        <th onclick="sortTable('cpcUpTable',11)" class="number">클릭율</th>
+                        <th onclick="sortTable('cpcUpTable',12)" class="number">전환수</th>
+                        <th onclick="sortTable('cpcUpTable',13)" class="number">매출액</th>
+                        <th onclick="sortTable('cpcUpTable',14)" class="number">ROAS</th>
+                    </tr>
+                    </thead>
+                    <tbody id="cpcUpBody">
+                    <tr><td colspan="15" class="no-data">데이터를 업로드해주세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <h3 style="margin: 20px 0 10px; color: #333;">🔻 CPC 감소</h3>
+            <div class="table-wrapper">
+                <table id="cpcDownTable">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable('cpcDownTable',0)">순위</th>
+                        <th onclick="sortTable('cpcDownTable',1)">캠페인유형</th>
+                        <th onclick="sortTable('cpcDownTable',2)">검색어</th>
+                        <th onclick="sortTable('cpcDownTable',3)">캠페인</th>
+                        <th onclick="sortTable('cpcDownTable',4)">광고그룹</th>
+                        <th onclick="sortTable('cpcDownTable',5)" class="number">CPC</th>
+                        <th onclick="sortTable('cpcDownTable',6)" class="number">CPC증감%</th>
+                        <th onclick="sortTable('cpcDownTable',7)" class="number">광고비</th>
+                        <th onclick="sortTable('cpcDownTable',8)" class="number">광고비(%)</th>
+                        <th onclick="sortTable('cpcDownTable',9)" class="number">노출수</th>
+                        <th onclick="sortTable('cpcDownTable',10)" class="number">클릭수</th>
+                        <th onclick="sortTable('cpcDownTable',11)" class="number">클릭율</th>
+                        <th onclick="sortTable('cpcDownTable',12)" class="number">전환수</th>
+                        <th onclick="sortTable('cpcDownTable',13)" class="number">매출액</th>
+                        <th onclick="sortTable('cpcDownTable',14)" class="number">ROAS</th>
+                    </tr>
+                    </thead>
+                    <tbody id="cpcDownBody">
+                    <tr><td colspan="15" class="no-data">데이터를 업로드해주세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 9: Device -->
+    <div id="device" class="tab-content">
+        <div class="section" id="section-device">
+            <div class="section-title">
+                <span>📱 디바이스별 성과 분석</span>
+            </div>
+            <div class="controls">
+                <select id="deviceCampaignTypeFilter" onchange="updateDeviceTables()"><option value="">캠페인 유형 전체</option></select>
+                <input type="number" id="standardROAS3" placeholder="ROAS 기준 %" min="0" step="10">
+                <button onclick="applyROASFilterDevice('low')">ROAS 적용</button>
+                <button class="roas-up" onclick="applyROASFilterDevice('up')">↑</button>
+                <button class="roas-down" onclick="applyROASFilterDevice('down')">↓</button>
+                <button class="danger" onclick="resetDevice()">초기화</button>
+            </div>
+            <div class="two-col">
+                <div>
+                    <h4 style="margin: 10px 0 10px;">PC</h4>
+                    <div class="table-wrapper">
+                        <table id="devicePCTable">
+                            <thead>
+                            <tr>
+                                <th onclick="sortTable('devicePCTable',0)">순위</th>
+                                <th onclick="sortTable('devicePCTable',1)">캠페인</th>
+                                <th onclick="sortTable('devicePCTable',2)" class="number">광고비</th>
+                                <th onclick="sortTable('devicePCTable',3)" class="number">PC광고비중%</th>
+                                <th onclick="sortTable('devicePCTable',4)" class="number">노출수</th>
+                                <th onclick="sortTable('devicePCTable',5)" class="number">클릭수</th>
+                                <th onclick="sortTable('devicePCTable',6)" class="number">전환수</th>
+                                <th onclick="sortTable('devicePCTable',7)" class="number">매출액</th>
+                                <th onclick="sortTable('devicePCTable',8)" class="number">전환당비용</th>
+                                <th onclick="sortTable('devicePCTable',9)" class="number">ROAS</th>
+                                <th onclick="sortTable('devicePCTable',10)" class="number">ROAS 증감%</th>
+                            </tr>
+                            </thead>
+                            <tbody id="devicePCBody">
+                            <tr><td colspan="11" class="no-data">데이터를 업로드해주세요.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="margin: 10px 0 10px;">MO</h4>
+                    <div class="table-wrapper">
+                        <table id="deviceMOTable">
+                            <thead>
+                            <tr>
+                                <th onclick="sortTable('deviceMOTable',0)">순위</th>
+                                <th onclick="sortTable('deviceMOTable',1)">캠페인</th>
+                                <th onclick="sortTable('deviceMOTable',2)" class="number">광고비</th>
+                                <th onclick="sortTable('deviceMOTable',3)" class="number">MO광고비중%</th>
+                                <th onclick="sortTable('deviceMOTable',4)" class="number">노출수</th>
+                                <th onclick="sortTable('deviceMOTable',5)" class="number">클릭수</th>
+                                <th onclick="sortTable('deviceMOTable',6)" class="number">전환수</th>
+                                <th onclick="sortTable('deviceMOTable',7)" class="number">매출액</th>
+                                <th onclick="sortTable('deviceMOTable',8)" class="number">전환당비용</th>
+                                <th onclick="sortTable('deviceMOTable',9)" class="number">ROAS</th>
+                                <th onclick="sortTable('deviceMOTable',10)" class="number">ROAS 증감%</th>
+                            </tr>
+                            </thead>
+                            <tbody id="deviceMOBody">
+                            <tr><td colspan="11" class="no-data">데이터를 업로드해주세요.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ============ 데이터/상수 ============ */
+let rawRows = [];
+let raw2Rows = [];
+let weeks = [];
+let currentWeekData = [];
+let previousWeekData = [];
+let sortDirection = {};
+let keywordPage = 1;
+const PAGE_SIZE = 100;
+const chartKeepers = {};
+let stackedChartInstance = null;
+const colorPalette = [
+    '#5D9CEC', '#4FC1E9', '#48CFAD', '#A0D468', '#FFCE54', '#FC6E51', '#ED5565', '#AC92EC', '#EC87C0',
+    '#656D78', '#434A54', '#E6E9ED', '#CCD1D9', '#AAB2BD'
+];
+
+const COLS_RAW = { DAY:0, WEEK:1, CAMPAIGN_TYPE:2, CAMPAIGN:3, ADGROUP:4, TIME:5, DOW:6, MEDIA:7, DEVICE:8, COST:9, IMP:10, CLK:11, CONV:12, REV:13, POS:14 };
+const COLS_RAW2 = { DAY:0, WEEK:1, CAMPAIGN_TYPE:2, CAMPAIGN:3, ADGROUP:4, KEYWORD:5, MEDIA:6, DEVICE:7, SEARCH_OR_CONTENT:8, COST:9, IMP:10, CLK:11, CONV:12, REV:13, POS:14 };
+
+/* ============ 유틸 ============ */
+const sum = (arr, key) => arr.reduce((s,d)=>s+(d[key]||0),0);
+const formatNum = v => Math.round(v).toLocaleString();
+const formatPct2 = v => (v||0).toFixed(2) + '%';
+const formatMoney = v => Math.round(v).toLocaleString();
+function formatCardValue(key, value){
+    if (!value && value!==0) return '-';
+    if (['cost','revenue','cpc','cpa','aov'].includes(key)) return formatMoney(value)+'원';
+    if (['impressions','clicks','conversions'].includes(key)) return formatNum(value);
+    if (['ctr','cvr'].includes(key)) return formatPct2(value);
+    if (['cor','roas'].includes(key)) return Math.round(value) + '%';
+    return formatNum(value);
+}
+const getChangeRate = (cur, prev) => {
+    if (prev === 0) return cur > 0 ? 100 : 0;
+    return ((cur - prev) / prev) * 100;
+};
+const badge = r => `<span class="${r>=0?'delta-up':'delta-down'}">${r>=0?'+':''}${r.toFixed(1)}%</span>`;
+function showStatus(msg, type) { const s=document.getElementById('uploadStatus'); s.textContent=msg; s.className='status '+type; s.style.display='block'; }
+function parseCSVLine(line){ const res=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const c=line[i], n=line[i+1]; if(c==='"'){ if(inQ&&n==='"'){cur+='"'; i++;} else inQ=!inQ; } else if(c===',' && !inQ){ res.push(cur.trim()); cur=''; } else cur+=c; } res.push(cur.trim()); return res; }
+function switchTab(e, tabName) {
+    e.preventDefault();
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    e.target.classList.add('active');
+}
+function toggleChangeBadge(tableId) {
+    const t = document.getElementById(tableId);
+    if(t) t.classList.toggle('hide-changes');
+}
+function highlightLowROAS(bodyId, inputId) {
+    const tbody = document.getElementById(bodyId);
+    const val = parseFloat(document.getElementById(inputId).value);
+    if(isNaN(val)) return;
+    tbody.querySelectorAll('tr[data-roas]').forEach(tr => {
+        const r = parseFloat(tr.getAttribute('data-roas'));
+        if(r < val) tr.classList.add('low-roas'); else tr.classList.remove('low-roas');
+    });
+}
+function filterRedRows(bodyId) {
+    const tbody = document.getElementById(bodyId);
+    const mode = tbody.getAttribute('data-filter-mode');
+    if (mode === 'on') {
+        tbody.querySelectorAll('tr').forEach(tr => tr.classList.remove('filtered-out'));
+        tbody.setAttribute('data-filter-mode', 'off');
+    } else {
+        tbody.querySelectorAll('tr').forEach(tr => {
+            if(!tr.classList.contains('low-roas') && !tr.classList.contains('total-row') && !tr.classList.contains('prev-total-row')) {
+                 tr.classList.add('filtered-out');
+            }
+        });
+        tbody.setAttribute('data-filter-mode', 'on');
+    }
+}
+function applyROASFilter(bodyId, direction, inputId) {
+    const tbody = document.getElementById(bodyId);
+    const rows = Array.from(tbody.querySelectorAll('tr.collapsible'));
+    rows.sort((a,b) => {
+        const ra = parseFloat(a.getAttribute('data-roas'));
+        const rb = parseFloat(b.getAttribute('data-roas'));
+        return direction === 'up' ? rb - ra : ra - rb;
+    });
+    rows.forEach(r => {
+        tbody.appendChild(r);
+        const detail = tbody.querySelector(`tr.detail-row[data-parent="${r.getAttribute('data-key')}"]`);
+        if(detail) tbody.appendChild(detail);
+    });
+}
+function clearROASFilter(bodyId) {
+    const tbody = document.getElementById(bodyId);
+    tbody.querySelectorAll('tr').forEach(tr => {
+        tr.classList.remove('low-roas');
+        tr.classList.remove('filtered-out');
+    });
+    tbody.setAttribute('data-filter-mode', 'off');
+}
+function parseNumber(v){ if(v===undefined||v===null) return 0; return parseFloat(String(v).replace(/,/g,''))||0; }
+
+/* ============ 업로드/파싱 ============ */
+let productRows = [];
+let productMap = {};
+
+function handleUpload(ev, kind){
+    const file=ev.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+        try{
+            if(kind === 'product' || kind === 'tsv') {
+                if(kind === 'product') parseProductCSV(e.target.result);
+                else parseTSV(e.target.result);
+            } else {
+                if(file.name.endsWith('.csv')) parseCSV(e.target.result,kind);
+                else parseXLSX(e.target.result,kind);
+            }
+            // Show checkmark
+            const checkId = 'check' + kind.charAt(0).toUpperCase() + kind.slice(1);
+            const dropzoneId = 'dropzone' + kind.charAt(0).toUpperCase() + kind.slice(1);
+            const checkEl = document.getElementById(checkId);
+            const dropzoneEl = document.getElementById(dropzoneId);
+            if(checkEl && dropzoneEl) {
+                dropzoneEl.classList.add('uploaded');
+            }
+            
+            let msg = `✅ ${kind.toUpperCase()} 로드 완료`;
+            if(kind==='raw') msg += `: ${rawRows.length}행`;
+            else if(kind==='raw2') msg += `: ${raw2Rows.length}행`;
+            else if(kind==='product') msg += `: ${productRows.length}행`;
+            else if(kind==='tsv') msg += `: ${Object.keys(productMap).length}개 상품`;
+            showStatus(msg,'success');
+            processData();
+        }catch(err){ console.error(err); showStatus('❌ 오류: '+err.message,'error'); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+function parseProductCSV(buf){
+    const text=new TextDecoder('utf-8').decode(buf);
+    const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+    productRows = [];
+    for(let i=1;i<lines.length;i++){
+        const v=parseCSVLine(lines[i]);
+        if(v.length>=13) {
+            productRows.push({
+                campaignType: v[0],
+                campaign: v[1],
+                adgroup: v[2],
+                productId: v[3],
+                date: v[6],
+                week: v[7],
+                cost: parseNumber(v[8]),
+                impressions: parseNumber(v[9]),
+                clicks: parseNumber(v[10]),
+                conversions: parseNumber(v[11]),
+                revenue: parseNumber(v[12])
+            });
+        }
+    }
+}
+function parseTSV(buf){
+    const text=new TextDecoder('utf-8').decode(buf);
+    const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+    productMap = {};
+    for(let i=1;i<lines.length;i++){
+        const v=lines[i].split('\t');
+        if(v.length>=16) {
+            const productId = v[2];
+            productMap[productId] = {
+                name: v[14],
+                image: v[15]
+            };
+        }
+    }
+}
+function parseCSV(buf, kind){
+    const text=new TextDecoder('utf-8').decode(buf);
+    const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+    const rows=[];
+    for(let i=2;i<lines.length;i++){
+        const v=parseCSVLine(lines[i]);
+        if(kind==='raw' && v.length>=15) rows.push(mapRaw(v));
+        if(kind==='raw2' && v.length>=15) rows.push(mapRaw2(v));
+    }
+    if(kind==='raw') rawRows=rows; else raw2Rows=rows;
+}
+function parseXLSX(buf, kind){
+    const wb=XLSX.read(new Uint8Array(buf), {type:'array'});
+    const sheet=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(sheet,{header:1});
+    const mapped=[];
+    for(let i=2;i<rows.length;i++){
+        const r=rows[i]; if(!r) continue;
+        if(kind==='raw' && r.length>=15) mapped.push(mapRaw(r));
+        if(kind==='raw2' && r.length>=15) mapped.push(mapRaw2(r));
+    }
+    if(kind==='raw') rawRows=mapped; else raw2Rows=mapped;
+}
+function mapRaw(v){
+    return { day:v[COLS_RAW.DAY], week:v[COLS_RAW.WEEK], campaignType:v[COLS_RAW.CAMPAIGN_TYPE],
+        campaign:v[COLS_RAW.CAMPAIGN], adgroup:v[COLS_RAW.ADGROUP], time:v[COLS_RAW.TIME], dow:v[COLS_RAW.DOW],
+        media:v[COLS_RAW.MEDIA], device:v[COLS_RAW.DEVICE],
+        cost:parseNumber(v[COLS_RAW.COST]), impressions:parseNumber(v[COLS_RAW.IMP]), clicks:parseNumber(v[COLS_RAW.CLK]),
+        conversions:parseNumber(v[COLS_RAW.CONV]), revenue:parseNumber(v[COLS_RAW.REV]), pos:parseNumber(v[COLS_RAW.POS]) };
+}
+function mapRaw2(v){
+    return { day:v[COLS_RAW2.DAY], week:v[COLS_RAW2.WEEK], campaignType:v[COLS_RAW2.CAMPAIGN_TYPE],
+        campaign:v[COLS_RAW2.CAMPAIGN], adgroup:v[COLS_RAW2.ADGROUP], keyword:v[COLS_RAW2.KEYWORD],
+        media:v[COLS_RAW2.MEDIA], device:v[COLS_RAW2.DEVICE], scType:v[COLS_RAW2.SEARCH_OR_CONTENT],
+        cost:parseNumber(v[COLS_RAW2.COST]), impressions:parseNumber(v[COLS_RAW2.IMP]), clicks:parseNumber(v[COLS_RAW2.CLK]),
+        conversions:parseNumber(v[COLS_RAW2.CONV]), revenue:parseNumber(v[COLS_RAW2.REV]), pos:parseNumber(v[COLS_RAW2.POS]) };
+}
+
+/* ============ 집계/지표 ============ */
+function calcMetrics(arr){
+    const cost=sum(arr,'cost'), imp=sum(arr,'impressions'), clk=sum(arr,'clicks'), conv=sum(arr,'conversions'), rev=sum(arr,'revenue');
+    const ctr=imp>0?(clk/imp)*100:0, cpc=clk>0?cost/clk:0, cvr=clk>0?(conv/clk)*100:0, cpa=conv>0?cost/conv:0, roas=cost>0?(rev/cost)*100:0;
+    const aov=conv>0?rev/conv:0, cor=rev>0?(cost/rev)*100:0;
+    return {cost, impressions:imp, clicks:clk, conversions:conv, revenue:rev, ctr, cpc, cvr, cpa, roas, aov, cor};
+}
+function aggregate(data, keyFn){
+    const map={};
+    data.forEach(d=>{
+        const k=keyFn(d);
+        if(!map[k]) map[k]={cost:0, impressions:0, clicks:0, conversions:0, revenue:0, sample:d, campaignType:d.campaignType, campaign:d.campaign, adgroup:d.adgroup, device:d.device, media:d.media};
+        map[k].cost+=d.cost; map[k].impressions+=d.impressions; map[k].clicks+=d.clicks; map[k].conversions+=d.conversions; map[k].revenue+=d.revenue;
+        map[k].campaignType = d.campaignType || map[k].campaignType;
+        map[k].campaign = d.campaign || map[k].campaign;
+        map[k].adgroup = d.adgroup || map[k].adgroup;
+        map[k].device = d.device || map[k].device;
+        map[k].media = d.media || map[k].media;
+    });
+    return map;
+}
+
+/* ============ 메인 처리 ============ */
+function processData(){
+    if(rawRows.length===0) return;
+    weeks=[...new Set(rawRows.map(d=>d.week))].sort().reverse().slice(0,4);
+    const curW=weeks[0], prevW=weeks[1];
+    currentWeekData=rawRows.filter(d=>d.week===curW);
+    previousWeekData=rawRows.filter(d=>d.week===prevW);
+    document.getElementById('mainDateRange').textContent = weeks.length ? `${weeks[weeks.length-1]} ~ ${weeks[0]}` : '';
+    populateFilters();
+    initRankFilters();
+    updateAll();
+}
+function populateFilters(){
+    const types=[...new Set(rawRows.map(d=>d.campaignType||'').filter(Boolean))].sort();
+    const camps=[...new Set(rawRows.map(d=>d.campaign||'').filter(Boolean))].sort();
+    const adgs=[...new Set(rawRows.map(d=>d.adgroup||'').filter(Boolean))].sort();
+    const setOpts=(id,arr,label)=>{ const el=document.getElementById(id); if(!el) return; el.innerHTML=`<option value="">${label}</option>`+arr.map(v=>`<option value="${v}">${v}</option>`).join(''); };
+    setOpts('campaignTypeFilter', types, '캠페인 유형 전체');
+    setOpts('adgroupCampaignTypeFilter', types, '캠페인 유형 전체');
+    setOpts('keywordCampaignTypeFilter', types, '캠페인 유형 전체');
+    setOpts('mediaCampaignTypeFilter', types, '캠페인 유형 전체');
+    setOpts('efficiencyCampaignTypeFilter', types, '캠페인 유형 전체');
+    setOpts('cpcCampaignTypeFilter', types, '캠페인 유형 전체');
+    setOpts('deviceCampaignTypeFilter', types, '캠페인 유형 전체');
+    setOpts('adgroupCampaignFilter', camps, '캠페인 전체');
+    setOpts('keywordCampaignFilter', camps, '캠페인 전체');
+    setOpts('mediaCampaignFilter', camps, '캠페인 전체');
+    setOpts('efficiencyCampaignFilter', camps, '캠페인 전체');
+    setOpts('cpcCampaignFilter', camps, '캠페인 전체');
+    setOpts('campaignCampaignFilter', camps, '캠페인 전체');
+    setOpts('campaignAdgroupFilter', adgs, '광고그룹 전체');
+    setOpts('mediaAdgroupFilter', adgs, '광고그룹 전체');
+    setOpts('adgroupAdgroupFilter', adgs, '광고그룹 전체');
+    setOpts('keywordAdgroupFilter', adgs, '광고그룹 전체');
+}
+function updateAll(){
+    updateStats();
+    updateCampaignTable();
+    updateAdgroupTable();
+    updateKeywordTable(true);
+    updateProductTable();
+    updateMediaTable();
+    updateEfficiencyAnalysis();
+    updateCPCAnalysis();
+    updateDeviceTables();
+    createCharts();
+    updateStackedChart();
+    updateTop10Tables();
+}
+
+/* ============ 카드(성과 요약) ============ */
+function renderDeltaRow(label, change, baseVal){
+    const up = change>=0;
+    const arrow = up ? '▲' : '▼';
+    const cls = up ? 'delta-up' : 'delta-down';
+    return `<div class="delta-row"><span class="delta-label">${label} (${baseVal})</span><span class="delta-val ${cls}"><span class="delta-icon">${arrow}</span>${Math.abs(change).toFixed(1)}%</span></div>`;
+}
+function updateStats(){
+    const cur = calcMetrics(currentWeekData);
+    const prev = calcMetrics(previousWeekData);
+    const fourWeeks = rawRows.filter(d=>weeks.includes(d.week));
+    const four = calcMetrics(fourWeeks);
+    const avg4 = {};
+    const denom = weeks.length || 1;
+    Object.keys(four).forEach(k=>{ avg4[k] = (typeof four[k]==='number') ? four[k]/denom : four[k]; });
+    const fields = [
+        {key:'cost', label:'광고비'}, {key:'impressions', label:'노출수'}, {key:'clicks', label:'클릭수'},
+        {key:'conversions', label:'전환수'}, {key:'revenue', label:'매출액'}, {key:'ctr', label:'클릭율'},
+        {key:'cvr', label:'전환율'}, {key:'cpc', label:'CPC'}, {key:'cpa', label:'전환당비용'},
+        {key:'roas', label:'ROAS'}, {key:'aov', label:'평균 주문 금액'}, {key:'cor', label:'매출액 대비 광고비'}
+    ];
+    const wrap = document.getElementById('statsContainer');
+    if(!wrap) return;
+    wrap.innerHTML = fields.map(f=>{
+        const curV=cur[f.key]||0, prevV=prev[f.key]||0, avgV=avg4[f.key]||0;
+        const chPrev=getChangeRate(curV, prevV);
+        const chAvg=getChangeRate(curV, avgV);
+        return `<div class="stat-card">
+            <div class="stat-title">${f.label}</div>
+            <div class="stat-value-main">${formatCardValue(f.key, curV)}</div>
+            <div class="delta-box">
+                ${renderDeltaRow('vs 지난주', chPrev, formatCardValue(f.key, prevV))}
+                ${renderDeltaRow('vs 4주평균', chAvg, formatCardValue(f.key, avgV))}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* ============ 차트(4주 추이) ============ */
+function createCharts(){
+    const container=document.getElementById('overviewCharts');
+    if(!container) return;
+    if(!weeks.length){ container.innerHTML=''; return; }
+    const metricsList = [
+        { key:'cost', label:'광고비' }, { key:'revenue', label:'매출액' }, { key:'roas', label:'ROAS' },
+        { key:'clicks', label:'클릭수' }, { key:'conversions', label:'전환수' }, { key:'cpa', label:'전환당비용' },
+        { key:'cpc', label:'CPC' }, { key:'ctr', label:'클릭율' }, { key:'cvr', label:'전환율' },
+        { key:'impressions', label:'노출수' }, { key:'aov', label:'평균주문금액' }, { key:'cor', label:'매출액 대비 광고비' }
+    ];
+    const labels=weeks.slice().reverse();
+    const series={};
+    metricsList.forEach(m=>{
+        series[m.key]=labels.map(w=>calcMetrics(rawRows.filter(d=>d.week===w))[m.key]||0);
+    });
+    container.innerHTML = metricsList.map(m=>{
+        const id='chart_'+m.key;
+        const cur=series[m.key][series[m.key].length-1]||0;
+        const prev=series[m.key][series[m.key].length-2]||0;
+        const avg=series[m.key].reduce((a,b)=>a+b,0)/series[m.key].length;
+        return `<div>
+            <div class="chart-caption"><strong>${m.label}</strong> | 현재: ${formatCardValue(m.key, cur)} / 지난주: ${formatCardValue(m.key, prev)} / 4주평균: ${formatCardValue(m.key, avg)}</div>
+            <div class="chart-wrapper"><canvas id="${id}"></canvas></div>
+        </div>`;
+    }).join('');
+    metricsList.forEach(m=>{
+        const id='chart_'+m.key; const ctx=document.getElementById(id);
+        if(chartKeepers[id]){ chartKeepers[id].destroy(); delete chartKeepers[id]; }
+        chartKeepers[id]=new Chart(ctx,{
+            type:'line',
+            data:{ labels, datasets:[{label:m.label, data:series[m.key], borderColor:'#1a7ed5', backgroundColor:'rgba(26,126,213,0.15)', tension:0.25, fill:true, pointRadius:3}] },
+            options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true} } }
+        });
+    });
+    document.getElementById('weekCompareTitle').textContent = `${labels[0]} ~ ${labels[labels.length-1]} (4주 추이)`;
+}
+
+/* ============ 성과 비중 분석 (전체 보기 기본) ============ */
+function updateStackedChart() {
+    if (currentWeekData.length === 0) return;
+    const groupByEl = document.getElementById('stackChartType');
+    const limitEl = document.getElementById('stackLimit');
+    if(!groupByEl || !limitEl) return;
+    const groupBy = groupByEl.value;
+    const limit = parseInt(limitEl.value); // 0이면 전체보기
+    const grouped = {};
+    let total = { cost: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0 };
+    currentWeekData.forEach(d => {
+        let key = d[groupBy] || '미분류';
+        if (groupBy === 'device') key = (d.device || '').includes('PC') ? 'PC' : '모바일';
+        if (!grouped[key]) grouped[key] = { cost: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0 };
+        grouped[key].cost += d.cost; grouped[key].impressions += d.impressions;
+        grouped[key].clicks += d.clicks; grouped[key].conversions += d.conversions;
+        grouped[key].revenue += d.revenue;
+        total.cost += d.cost; total.impressions += d.impressions; total.clicks += d.clicks;
+        total.conversions += d.conversions; total.revenue += d.revenue;
+    });
+    let sortedKeys = Object.keys(grouped).sort((a, b) => grouped[b].cost - grouped[a].cost);
+    let finalKeys;
+    if (limit === 0) {
+        finalKeys = sortedKeys;
+    } else {
+        finalKeys = sortedKeys.slice(0, limit);
+        const otherKeys = sortedKeys.slice(limit);
+        if (otherKeys.length > 0) {
+            grouped['기타'] = { cost: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0 };
+            otherKeys.forEach(k => {
+                grouped['기타'].cost += grouped[k].cost; grouped['기타'].impressions += grouped[k].impressions;
+                grouped['기타'].clicks += grouped[k].clicks; grouped['기타'].conversions += grouped[k].conversions;
+                grouped['기타'].revenue += grouped[k].revenue;
+            });
+            finalKeys.push('기타');
+        }
+    }
+    const yLabels = ['광고비', '노출수', '클릭수', '전환수', '매출액'];
+    const metricKeys = ['cost', 'impressions', 'clicks', 'conversions', 'revenue'];
+    
+    const datasets = finalKeys.map((key, index) => {
+        const data = metricKeys.map(m => total[m] > 0 ? (grouped[key][m] / total[m] * 100) : 0);
+        const color = colorPalette[index % colorPalette.length];
+        return {
+            label: key, 
+            data: data, 
+            backgroundColor: color,
+            borderColor: '#fff', 
+            borderWidth: 1, 
+            rawValues: metricKeys.map(m => grouped[key][m]),
+            originalColor: color
+        };
+    });
+
+    const ctx = document.getElementById('stackedBarChart').getContext('2d');
+    if (stackedChartInstance) stackedChartInstance.destroy();
+    
+    let highlightedLabel = null;
+
+    stackedChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: yLabels, datasets: datasets },
+        options: {
+            indexAxis: 'y', 
+            responsive: true, 
+            maintainAspectRatio: false,
+            onClick: (e, activeElements, chart) => {
+                if (activeElements.length > 0) {
+                    const datasetIndex = activeElements[0].datasetIndex;
+                    const clickedLabel = chart.data.datasets[datasetIndex].label;
+
+                    if (highlightedLabel === clickedLabel) {
+                        highlightedLabel = null;
+                        chart.data.datasets.forEach(ds => ds.backgroundColor = ds.originalColor);
+                    } else {
+                        highlightedLabel = clickedLabel;
+                        chart.data.datasets.forEach(ds => {
+                            if (ds.label === clickedLabel) {
+                                ds.backgroundColor = ds.originalColor;
+                            } else {
+                                ds.backgroundColor = '#e0e0e0';
+                            }
+                        });
+                    }
+                    chart.update();
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            let label = ctx.dataset.label || '';
+                            let val = ctx.parsed.x;
+                            let raw = ctx.dataset.rawValues[ctx.dataIndex];
+                            let rawStr = Math.round(raw).toLocaleString();
+                            if(ctx.label==='광고비'||ctx.label==='매출액') rawStr+='원';
+                            return `${label}: ${val.toFixed(1)}% (${rawStr})`;
+                        }
+                    }
+                },
+                legend: { 
+                    position: 'top', 
+                    labels: { boxWidth: 12, font: { size: 11 } },
+                    onClick: (e, legendItem, legend) => {
+                        const clickedLabel = legendItem.text;
+                        const chart = legend.chart;
+                        
+                        if (highlightedLabel === clickedLabel) {
+                            highlightedLabel = null;
+                            chart.data.datasets.forEach(ds => ds.backgroundColor = ds.originalColor);
+                        } else {
+                            highlightedLabel = clickedLabel;
+                            chart.data.datasets.forEach(ds => {
+                                if (ds.label === clickedLabel) {
+                                    ds.backgroundColor = ds.originalColor;
+                                } else {
+                                    ds.backgroundColor = '#e0e0e0';
+                                }
+                            });
+                        }
+                        chart.update();
+                    }
+                }
+            },
+            scales: { x: { stacked: true, min: 0, max: 100, ticks: { callback: v => v + '%' } }, y: { stacked: true } }
+        },
+        plugins: [{
+            id: 'percentLabel',
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                chart.data.datasets.forEach((ds, i) => {
+                    const meta = chart.getDatasetMeta(i);
+                    if (!meta.hidden) {
+                        meta.data.forEach((el, idx) => {
+                            const val = ds.data[idx];
+                            if (val > 4) {
+                                ctx.fillStyle = (ds.backgroundColor === '#e0e0e0') ? '#999' : '#333'; 
+                                ctx.font = 'bold 11px sans-serif';
+                                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                                const centerX = (el.x + el.base) / 2;
+                                ctx.fillText(val.toFixed(1) + '%', centerX, el.y);
+                            }
+                        });
+                    }
+                });
+            }
+        }]
+    });
+}
+
+/* ============ 순위 분석 로직 ============ */
+function initRankFilters() {
+    const populate = (id, field, source) => {
+        const el = document.getElementById(id);
+        if(!el) return;
+        const set = new Set(source.map(r => r[field]).filter(v => v));
+        el.innerHTML = '<option value="">전체</option>';
+        Array.from(set).sort().forEach(v => el.innerHTML += `<option value="${v}">${v}</option>`);
+    };
+    populate('trendCT', 'campaignType', raw2Rows);
+    populate('trendCamp', 'campaign', raw2Rows);
+    populate('trendAdg', 'adgroup', raw2Rows);
+    populate('trendMedia', 'media', raw2Rows);
+    populate('heatCT', 'campaignType', rawRows);
+    populate('heatCamp', 'campaign', rawRows);
+    populate('heatAdg', 'adgroup', rawRows);
+    populate('heatMedia', 'media', rawRows);
+}
+function updateRankTrend() {
+    const ct = document.getElementById('trendCT').value;
+    const cp = document.getElementById('trendCamp').value;
+    const adg = document.getElementById('trendAdg').value;
+    const med = document.getElementById('trendMedia').value;
+    const inputVal = document.getElementById('trendKw').value;
+    if(!inputVal.trim()) return; 
+    const kws = inputVal.split(',').map(s=>s.trim()).filter(s=>s);
+
+    const baseData = raw2Rows.filter(r => 
+        (!ct || r.campaignType === ct) && 
+        (!cp || r.campaign === cp) && 
+        (!adg || r.adgroup === adg) &&
+        (!med || r.media === med)
+    );
+
+    const dates = [...new Set(baseData.map(r=>r.day))].sort().slice(-14);
+    
+    const datasets = kws.map((k, i) => {
+        const data = dates.map(d => {
+            const target = baseData.filter(r => r.day === d && r.keyword === k && r.pos > 0);
+            if(target.length === 0) return null;
+            const avg = target.reduce((s,r)=>s+r.pos,0) / target.length;
+            return avg;
+        });
+        const colors = ['#007bff','#28a745','#dc3545','#ffc107','#17a2b8', '#6610f2', '#e83e8c', '#fd7e14'];
+        return { label: k, data, borderColor: colors[i % colors.length], backgroundColor: colors[i % colors.length], tension: 0.1, spanGaps: true, pointRadius: 4 };
+    });
+
+    const ctx = document.getElementById('rankTrendChart');
+    if(window.trendChartObj) window.trendChartObj.destroy();
+    
+    window.trendChartObj = new Chart(ctx, {
+        type: 'line',
+        data: { labels: dates, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { reverse: true, min: 1, title: {display:true, text:'평균 순위 (위)'} } },
+            plugins: {
+                tooltip: {
+                    callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(1) + '위' }
+                }
+            }
+        }
+    });
+}
+function updateRankHeatmap() {
+    const ct = document.getElementById('heatCT').value;
+    const cp = document.getElementById('heatCamp').value;
+    const adg = document.getElementById('heatAdg').value;
+    const med = document.getElementById('heatMedia').value;
+
+    const data = rawRows.filter(r => 
+        (!ct || r.campaignType===ct) && 
+        (!cp || r.campaign===cp) && 
+        (!adg || r.adgroup===adg) &&
+        (!med || r.media===med)
+    );
+
+    const days = ['월요일','화요일','수요일','목요일','금요일','토요일','일요일'];
+    const times = Array.from({length:24}, (_,i) => (i<10?'0'+i:i)+'시~'+((i+1)<10?'0'+(i+1):(i+1))+'시');
+    
+    const grid = {};
+    data.forEach(r => {
+        if(r.pos > 0 && r.dow && r.time) {
+            const key = `${r.dow}_${r.time}`;
+            if(!grid[key]) grid[key] = {sum:0, cnt:0};
+            grid[key].sum += r.pos;
+            grid[key].cnt++;
+        }
+    });
+
+    let html = '<table class="rank-heatmap-table" style="width:100%; border-collapse:collapse; font-size:12px;">';
+    html += '<thead><tr><th style="background:#f8f9fa; padding:8px; border:1px solid #ddd;">시간/요일</th>' + 
+            days.map(d=>`<th style="background:#f8f9fa; padding:8px; border:1px solid #ddd;">${d}</th>`).join('') + 
+            '</tr></thead><tbody>';
+    
+    times.forEach(t => {
+        html += `<tr><td style="background:#eee; font-weight:bold; padding:8px; border:1px solid #ddd; text-align:center;">${t}</td>`;
+        days.forEach(d => {
+            const k = `${d}_${t}`;
+            const cell = grid[k];
+            if(cell) {
+                const avg = cell.sum / cell.cnt;
+                const alpha = Math.max(0.1, 1 - (avg / 15)); 
+                html += `<td style="background:rgba(40,167,69,${alpha}); color:${alpha > 0.5 ? '#fff':'#333'}; padding:8px; border:1px solid #ddd; text-align:center;">${avg.toFixed(1)}위</td>`;
+            } else {
+                html += '<td style="padding:8px; border:1px solid #ddd; text-align:center; color:#ccc;">-</td>';
+            }
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    
+    document.getElementById('rankHeatmapContainer').innerHTML = html;
+}
+
+/* ============ 공통 테이블/토글/소트 ============ */
+function addDetailRow(colSpan, key, cur, prev, prevLabelText, avgM){
+    const change=(c,p)=>badge(getChangeRate(c,p));
+    const fv=(k,v)=>formatCardValue(k,v).replace('원','');
+    const avgVal = (k) => fv(k, avgM[k]||0);
+    return `<tr class="detail-row" data-parent="${key}" style="display:none">
+        <td colspan="${colSpan}">
+            <div style="display:flex; gap:20px; align-items:flex-start;">
+                <div style="flex:1;">
+                    <strong>${prevLabelText}</strong>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:5px;">
+                        <span>광고비 ${fv('cost', prev.cost||0)} (${change(cur.cost||0, prev.cost||0)})</span>
+                        <span>노출 ${fv('impressions', prev.impressions||0)} (${change(cur.impressions||0, prev.impressions||0)})</span>
+                        <span>클릭 ${fv('clicks', prev.clicks||0)} (${change(cur.clicks||0, prev.clicks||0)})</span>
+                        <span>전환 ${fv('conversions', prev.conversions||0)} (${change(cur.conversions||0, prev.conversions||0)})</span>
+                        <span>매출 ${fv('revenue', prev.revenue||0)} (${change(cur.revenue||0, prev.revenue||0)})</span>
+                        <span>ROAS ${fv('roas', prev.roas||0)} (${change(cur.roas||0, prev.roas||0)})</span>
+                    </div>
+                </div>
+                <div style="flex:1; border-left:1px solid #ddd; padding-left:20px;">
+                    <strong>4주 평균</strong>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:5px;">
+                        <span>광고비 ${avgVal('cost')}</span>
+                        <span>노출 ${avgVal('impressions')}</span>
+                        <span>클릭 ${avgVal('clicks')}</span>
+                        <span>전환 ${avgVal('conversions')}</span>
+                        <span>매출 ${avgVal('revenue')}</span>
+                        <span>ROAS ${avgVal('roas')}</span>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>`;
+}
+function bindRowToggle(bodyId){
+    const tbody=document.getElementById(bodyId);
+    tbody.querySelectorAll('.collapsible').forEach(r=>{
+        r.onclick=()=>{
+            const key=r.getAttribute('data-key');
+            const detail=tbody.querySelector(`tr.detail-row[data-parent="${key}"]`);
+            if(detail) detail.style.display = (detail.style.display==='none'||!detail.style.display)?'table-row':'none';
+        };
+    });
+}
+function sortTable(tableId, colIdx){
+    const table=document.getElementById(tableId);
+    const tbody=table.querySelector('tbody');
+    const totalRows=Array.from(tbody.querySelectorAll('tr.total-row, tr.prev-total-row'));
+    const pairs=[]; let cur=null;
+    Array.from(tbody.querySelectorAll('tr')).forEach(r=>{
+        if(r.classList.contains('total-row')||r.classList.contains('prev-total-row')) return;
+        if(r.classList.contains('collapsible')){ cur={row:r, detail:null}; pairs.push(cur); }
+        else if(r.classList.contains('detail-row') && cur) cur.detail=r;
+    });
+    const asc=sortDirection[tableId+'-'+colIdx]!=='asc';
+    sortDirection[tableId+'-'+colIdx]=asc?'asc':'desc';
+    pairs.sort((a,b)=>{
+        const getVal=row=>{
+            const cell=row.cells[colIdx]; if(!cell) return '';
+            const clone=cell.cloneNode(true); clone.querySelectorAll('.badge-mini').forEach(el=>el.remove());
+            const t=clone.textContent.trim();
+            const num=parseFloat(t.replace(/[^0-9.-]/g,'')); if(!isNaN(num)&&t.replace(/[^0-9.-]/g,'').length>0) return num;
+            return t;
+        };
+        const av=getVal(a.row), bv=getVal(b.row);
+        if(typeof av==='number' && typeof bv==='number') return asc?av-bv:bv-av;
+        return asc?(''+av).localeCompare(''+bv):(''+bv).localeCompare(''+av);
+    });
+    tbody.innerHTML=''; totalRows.forEach(r=>tbody.appendChild(r));
+    pairs.forEach(p=>{ tbody.appendChild(p.row); if(p.detail) tbody.appendChild(p.detail); });
+    table.querySelectorAll('th').forEach((th,i)=>{ th.classList.remove('sort-asc','sort-desc'); if(i===colIdx) th.classList.add(asc?'sort-asc':'sort-desc'); });
+    bindRowToggle(tbody.id);
+}
+
+/* ============ TOTAL 행 (4주 평균 증감률 제거) ============ */
+function generateTotalRowHTML(list, colSpan, typeKey){
+    if(!list || list.length===0) return '';
+    const total=list.reduce((a,it)=>({ cost:a.cost+it.m.cost, impressions:a.impressions+it.m.impressions, clicks:a.clicks+it.m.clicks, conversions:a.conversions+it.m.conversions, revenue:a.revenue+it.m.revenue }), {cost:0, impressions:0, clicks:0, conversions:0, revenue:0});
+    const cur=calcMetrics([total]);
+    const prevTotal=list.reduce((a,it)=>({ cost:a.cost+it.pm.cost, impressions:a.impressions+it.pm.impressions, clicks:a.clicks+it.pm.clicks, conversions:a.conversions+it.pm.conversions, revenue:a.revenue+it.pm.revenue }), {cost:0, impressions:0, clicks:0, conversions:0, revenue:0});
+    const prev=calcMetrics([prevTotal]);
+    const fourWeeks=rawRows.filter(d=>weeks.includes(d.week));
+    const avg4=calcMetrics(fourWeeks);
+    const denom = weeks.length || 1;
+    ['cost','impressions','clicks','conversions','revenue'].forEach(k=>{ avg4[k]= (avg4[k]||0)/denom; });
+    avg4.ctr = avg4.impressions>0 ? (avg4.clicks/avg4.impressions)*100 : 0;
+    avg4.cpc = avg4.clicks>0 ? avg4.cost/avg4.clicks : 0;
+    avg4.cvr = avg4.clicks>0 ? (avg4.conversions/avg4.clicks)*100 : 0;
+    avg4.cpa = avg4.conversions>0 ? avg4.cost/avg4.conversions : 0;
+    avg4.roas = avg4.cost>0 ? (avg4.revenue/avg4.cost)*100 : 0;
+
+    const keys=['cost','impressions','clicks','ctr','cpc','conversions','cvr','revenue','cpa','roas'];
+    const val=(k,m,p)=>`<td class="number">${formatCardValue(k,m[k])} <span class="badge-mini">${badge(getChangeRate(m[k], p[k]||0))}</span></td>`;
+    const valNoBadge=(k,m)=>`<td class="number">${formatCardValue(k,m[k])}</td>`;
+    const prevCells=keys.map(k=>valNoBadge(k, prev)).join('');
+    const curCells =keys.map(k=>val(k, cur, prev)).join('');
+    const avgCells =keys.map(k=>valNoBadge(k, avg4)).join('');
+    const labelColSpan=(typeKey==='adgroup')?4:(typeKey==='keyword'?4:(typeKey==='product'?5:3));
+    const prevLabel=weeks[1]?`TOTAL (${weeks[1]})`:'TOTAL (이전주)';
+    const curLabel =weeks[0]?`TOTAL (${weeks[0]})`:'TOTAL (현재주)';
+    const avgLabel ='TOTAL (4주 평균)';
+    return `
+        <tr class="total-row" style="background:#dff1ff;"><td colspan="${labelColSpan}" style="text-align:center;">${avgLabel}</td>${avgCells}</tr>
+        <tr class="prev-total-row"><td colspan="${labelColSpan}" style="text-align:center;">${prevLabel}</td>${prevCells}</tr>
+        <tr class="total-row"><td colspan="${labelColSpan}" style="text-align:center;">${curLabel}</td>${curCells}</tr>
+    `;
+}
+
+/* ============ 캠페인/광고그룹/키워드/매체 ============ */
+function campaignRowCells(it){
+    const m=it.m,p=it.pm;
+    return [
+        ['cost'],['impressions'],['clicks'],['ctr'],['cpc'],['conversions'],['cvr'],['revenue'],['cpa'],['roas']
+    ].map(([k])=>`<td class="number">${formatCardValue(k,m[k])} <span class="badge-mini">${badge(getChangeRate(m[k], p[k]||0))}</span></td>`).join('');
+}
+function updateCampaignTable(){
+    const tbody=document.getElementById('campaignBody');
+    if(!currentWeekData.length){ tbody.innerHTML='<tr><td colspan="13" class="no-data">데이터를 업로드해주세요.</td></tr>'; return; }
+    const filter=(document.getElementById('campaignFilter').value||'').toLowerCase();
+    const typeFilter=document.getElementById('campaignTypeFilter').value;
+    const deviceFilter=document.getElementById('campaignDeviceFilter').value;
+    const campFilter=document.getElementById('campaignCampaignFilter').value;
+    const agFilter=document.getElementById('campaignAdgroupFilter').value;
+    
+    const dataFiltered = currentWeekData.filter(d=>{
+        return (!typeFilter||d.campaignType===typeFilter) &&
+               (!deviceFilter|| (d.device||'').includes(deviceFilter)) &&
+               (!campFilter||d.campaign===campFilter) &&
+               (!agFilter||d.adgroup===agFilter);
+    });
+    const prevFiltered = previousWeekData.filter(d=>{
+        return (!typeFilter||d.campaignType===typeFilter) &&
+               (!deviceFilter|| (d.device||'').includes(deviceFilter)) &&
+               (!campFilter||d.campaign===campFilter) &&
+               (!agFilter||d.adgroup===agFilter);
+    });
+
+    const curMap=aggregate(dataFiltered, d=>d.campaign||'미분류');
+    const prevMap=aggregate(prevFiltered, d=>d.campaign||'미분류');
+    const fourWeeks = rawRows.filter(d=>weeks.includes(d.week) &&
+        (!typeFilter||d.campaignType===typeFilter) &&
+        (!deviceFilter|| (d.device||'').includes(deviceFilter)) &&
+        (!campFilter||d.campaign===campFilter) &&
+        (!agFilter||d.adgroup===agFilter)
+    );
+    const avgMap = aggregate(fourWeeks, d=>d.campaign||'미분류');
+    const denom = weeks.length || 1;
+
+    const list=Object.keys(curMap).map(k=>{
+        const m=calcMetrics([curMap[k]]); 
+        const pm=prevMap[k]?calcMetrics([prevMap[k]]):calcMetrics([]);
+        let avgM = {cost:0,impressions:0,clicks:0,conversions:0,revenue:0,roas:0};
+        if(avgMap[k]) {
+            ['cost','impressions','clicks','conversions','revenue'].forEach(key => avgM[key] = avgMap[k][key]/denom);
+            avgM.roas = avgM.cost>0 ? (avgM.revenue/avgM.cost)*100 : 0;
+        }
+        const type=curMap[k].campaignType||'-';
+        if(k.toLowerCase().indexOf(filter)===-1) return null;
+        return {name:k,type,m,pm,avgM};
+    }).filter(Boolean).sort((a,b)=>b.m.conversions-a.m.conversions);
+
+    let html=generateTotalRowHTML(list,13,'campaign');
+    const prevLabel=weeks[1]?`${weeks[1]} 지난 데이터`:'지난 데이터';
+    list.forEach((it,idx)=>{
+        html+=`<tr class="collapsible" data-key="${it.name}" data-roas="${it.m.roas}">
+            <td><span class="rank-badge">${idx+1}</span></td>
+            <td class="text-col" title="${it.name}">${it.name}</td>
+            <td class="text-col" title="${it.type}">${it.type}</td>
+            ${campaignRowCells(it)}
+        </tr>`;
+        html+=addDetailRow(13,it.name,it.m,it.pm,prevLabel,it.avgM);
+    });
+    tbody.innerHTML = html || '<tr><td colspan="13" class="no-data">검색 결과가 없습니다.</td></tr>';
+    bindRowToggle('campaignBody'); clearROASFilter('campaignBody');
+}
+
+function adgroupRowCells(it){
+    const m=it.m,p=it.pm;
+    return [
+        ['cost'],['impressions'],['clicks'],['ctr'],['cpc'],['conversions'],['cvr'],['revenue'],['cpa'],['roas']
+    ].map(([k])=>`<td class="number">${formatCardValue(k,m[k])} <span class="badge-mini">${badge(getChangeRate(m[k], p[k]||0))}</span></td>`).join('');
+}
+function updateAdgroupTable(){
+    const tbody=document.getElementById('adgroupBody');
+    if(!currentWeekData.length){ tbody.innerHTML='<tr><td colspan="14" class="no-data">데이터를 업로드해주세요.</td></tr>'; return; }
+    const f=(document.getElementById('adgroupFilter').value||'').toLowerCase();
+    const campF=document.getElementById('adgroupCampaignFilter').value;
+    const typeF=document.getElementById('adgroupCampaignTypeFilter').value;
+    const devF=document.getElementById('adgroupDeviceFilter').value;
+    const keyFn=d=>`${d.campaign||'미분류'}||${d.adgroup||'미분류'}`;
+    const cur=aggregate(currentWeekData.filter(d=>
+        (!campF||d.campaign===campF)&&(!typeF||d.campaignType===typeF)&&(!devF||(d.device||'').includes(devF))
+    ), keyFn);
+    const prev=aggregate(previousWeekData.filter(d=>
+        (!campF||d.campaign===campF)&&(!typeF||d.campaignType===typeF)&&(!devF||(d.device||'').includes(devF))
+    ), keyFn);
+    const fourWeeks = rawRows.filter(d=>weeks.includes(d.week) &&
+        (!campF||d.campaign===campF)&&(!typeF||d.campaignType===typeF)&&(!devF||(d.device||'').includes(devF))
+    );
+    const avgMap = aggregate(fourWeeks, keyFn);
+    const denom = weeks.length || 1;
+
+    const list=Object.keys(cur).map(k=>{
+        const [camp,ag]=k.split('||'); const type=cur[k].campaignType||'-';
+        if(f && ag.toLowerCase().indexOf(f)===-1) return null;
+        const m=calcMetrics([cur[k]]); 
+        const pm=prev[k]?calcMetrics([prev[k]]):calcMetrics([]);
+        let avgM = {cost:0,impressions:0,clicks:0,conversions:0,revenue:0,roas:0};
+        if(avgMap[k]) {
+            ['cost','impressions','clicks','conversions','revenue'].forEach(key => avgM[key] = avgMap[k][key]/denom);
+            avgM.roas = avgM.cost>0 ? (avgM.revenue/avgM.cost)*100 : 0;
+        }
+        return {camp,ag,type,m,pm,avgM};
+    }).filter(Boolean).sort((a,b)=>b.m.conversions-a.m.conversions);
+    let html=generateTotalRowHTML(list,14,'adgroup');
+    const prevLabel=weeks[1]?`${weeks[1]} 지난 데이터`:'지난 데이터';
+    list.forEach((it,idx)=>{
+        html+=`<tr class="collapsible" data-key="${it.camp}||${it.ag}" data-roas="${it.m.roas}">
+            <td><span class="rank-badge">${idx+1}</span></td>
+            <td class="text-col" title="${it.ag}">${it.ag}</td>
+            <td class="text-col" title="${it.camp}">${it.camp}</td>
+            <td class="text-col" title="${it.type}">${it.type}</td>
+            ${adgroupRowCells(it)}
+        </tr>`;
+        html+=addDetailRow(14,`${it.camp}||${it.ag}`,it.m,it.pm,prevLabel,it.avgM);
+    });
+    tbody.innerHTML = html || '<tr><td colspan="14" class="no-data">검색 결과가 없습니다.</td></tr>';
+    bindRowToggle('adgroupBody'); clearROASFilter('adgroupBody');
+}
+
+function updateKeywordTable(reset){
+    if(reset) keywordPage=1;
+    const tbody=document.getElementById('keywordBody');
+    if(!raw2Rows.length){ tbody.innerHTML='<tr><td colspan="14" class="no-data">RAW2(검색어) 파일을 업로드해주세요.</td></tr>'; return; }
+    const search=(document.getElementById('keywordSearch').value||'').toLowerCase();
+    const device=document.getElementById('deviceFilter').value;
+    const campF=document.getElementById('keywordCampaignFilter').value;
+    const typeF=document.getElementById('keywordCampaignTypeFilter').value;
+    const agF=document.getElementById('keywordAdgroupFilter').value;
+    const filterFn = d => (!device || (d.device||'').includes(device))
+            && (!campF || d.campaign===campF)
+            && (!typeF || d.campaignType===typeF)
+            && (!agF || d.adgroup===agF);
+
+    const curData = raw2Rows.filter(d => d.week===weeks[0] && filterFn(d));
+    const prevData = raw2Rows.filter(d => d.week===weeks[1] && filterFn(d));
+    const curMap=aggregate(curData, d=>d.keyword||'미분류');
+    const prevMap=aggregate(prevData, d=>d.keyword||'미분류');
+
+    const fourWeeks = raw2Rows.filter(d=>weeks.includes(d.week) && filterFn(d));
+    const avgMap = aggregate(fourWeeks, d=>d.keyword||'미분류');
+    const denom = weeks.length || 1;
+
+    const rows=Object.keys(curMap).map(k=>{
+        if(k.toLowerCase().indexOf(search)===-1) return null;
+        const m=calcMetrics([{...curMap[k]}]);
+        const pm=prevMap[k]?calcMetrics([{...prevMap[k]}]):calcMetrics([]);
+        let avgM = {cost:0,impressions:0,clicks:0,conversions:0,revenue:0,ctr:0,cvr:0,cpa:0,roas:0,cpc:0};
+        if(avgMap[k]) {
+            avgM.cost = avgMap[k].cost/denom;
+            avgM.impressions = avgMap[k].impressions/denom;
+            avgM.clicks = avgMap[k].clicks/denom;
+            avgM.conversions = avgMap[k].conversions/denom;
+            avgM.revenue = avgMap[k].revenue/denom;
+            avgM.ctr = avgM.impressions>0 ? (avgM.clicks/avgM.impressions)*100 : 0;
+            avgM.cpc = avgM.clicks>0 ? avgM.cost/avgM.clicks : 0;
+            avgM.cvr = avgM.clicks>0 ? (avgM.conversions/avgM.clicks)*100 : 0;
+            avgM.cpa = avgM.conversions>0 ? avgM.cost/avgM.conversions : 0;
+            avgM.roas = avgM.cost>0 ? (avgM.revenue/avgM.cost)*100 : 0;
+        }
+        return {keyword:k, data:curMap[k].sample, m, pm, avgM};
+    }).filter(Boolean).sort((a,b)=>b.m.conversions-a.m.conversions);
+
+    const totalPages=Math.max(1, Math.ceil(rows.length/PAGE_SIZE));
+    keywordPage=Math.min(keywordPage,totalPages);
+    const start=(keywordPage-1)*PAGE_SIZE;
+    const pageRows=rows.slice(start,start+PAGE_SIZE);
+    let html=generateTotalRowHTML(rows,14,'keyword');
+    const prevLabel=weeks[1]?`${weeks[1]} 지난 데이터`:'지난 데이터';
+    pageRows.forEach((it,idx)=>{
+        html+=`<tr class="collapsible" data-key="${it.keyword}" data-roas="${it.m.roas}">
+            <td><span class="rank-badge">${start+idx+1}</span></td>
+            <td class="text-col" title="${it.keyword}"><strong>${it.keyword}</strong></td>
+            <td class="text-col" title="${it.data.campaign}">${it.data.campaign}</td>
+            <td class="text-col" title="${it.data.adgroup}">${it.data.adgroup}</td>
+            <td class="number">${formatCardValue('cost', it.m.cost)} <span class="badge-mini">${badge(getChangeRate(it.m.cost, it.pm.cost||0))}</span></td>
+            <td class="number">${formatCardValue('impressions', it.m.impressions)} <span class="badge-mini">${badge(getChangeRate(it.m.impressions, it.pm.impressions||0))}</span></td>
+            <td class="number">${formatCardValue('clicks', it.m.clicks)} <span class="badge-mini">${badge(getChangeRate(it.m.clicks, it.pm.clicks||0))}</span></td>
+            <td class="number">${formatCardValue('ctr', it.m.ctr)} <span class="badge-mini">${badge(getChangeRate(it.m.ctr, it.pm.ctr||0))}</span></td>
+            <td class="number">${formatCardValue('cpc', it.m.cpc)} <span class="badge-mini">${badge(getChangeRate(it.m.cpc, it.pm.cpc||0))}</span></td>
+            <td class="number">${formatCardValue('conversions', it.m.conversions)} <span class="badge-mini">${badge(getChangeRate(it.m.conversions, it.pm.conversions||0))}</span></td>
+            <td class="number">${formatCardValue('cvr', it.m.cvr)} <span class="badge-mini">${badge(getChangeRate(it.m.cvr, it.pm.cvr||0))}</span></td>
+            <td class="number">${formatCardValue('revenue', it.m.revenue)} <span class="badge-mini">${badge(getChangeRate(it.m.revenue, it.pm.revenue||0))}</span></td>
+            <td class="number">${formatCardValue('cpa', it.m.cpa)} <span class="badge-mini">${badge(getChangeRate(it.m.cpa, it.pm.cpa||0))}</span></td>
+            <td class="number" style="color:#111;">${formatCardValue('roas', it.m.roas)} <span class="badge-mini">${badge(getChangeRate(it.m.roas, it.pm.roas||0))}</span></td>
+        </tr>`;
+        html+=addDetailRow(14,it.keyword,it.m,it.pm,prevLabel,it.avgM);
+    });
+    tbody.innerHTML = html || '<tr><td colspan="14" class="no-data">검색 결과가 없습니다.</td></tr>';
+    document.getElementById('kwPageInfo').textContent = `${rows.length===0?0:keywordPage} / ${rows.length===0?0:totalPages}`;
+    document.getElementById('kwPrev').disabled = keywordPage<=1;
+    document.getElementById('kwNext').disabled = keywordPage>=totalPages;
+    bindRowToggle('keywordBody'); clearROASFilter('keywordBody');
+}
+function changeKeywordPage(d){ keywordPage+=d; if(keywordPage<1) keywordPage=1; updateKeywordTable(false); }
+
+function updateMediaTable(){
+    const tbody=document.getElementById('mediaBody');
+    if(!currentWeekData.length){ tbody.innerHTML='<tr><td colspan="16" class="no-data">데이터를 업로드해주세요.</td></tr>'; return; }
+    const search=(document.getElementById('mediaFilter').value||'').toLowerCase();
+    const campF=document.getElementById('mediaCampaignFilter').value;
+    const typeF=document.getElementById('mediaCampaignTypeFilter').value;
+    const agF=document.getElementById('mediaAdgroupFilter').value;
+    const devF=document.getElementById('mediaDeviceFilter').value;
+    const keyFn=d=>`${d.media||'미분류'}||${d.campaign||'미분류'}||${d.adgroup||'미분류'}||${d.campaignType||'미분류'}||${d.device||''}`;
+    const cur=aggregate(currentWeekData.filter(d=>
+        (!campF||d.campaign===campF)&&(!typeF||d.campaignType===typeF)&&(!agF||d.adgroup===agF)&&(!devF||(d.device||'').includes(devF))
+    ), keyFn);
+    const prev=aggregate(previousWeekData.filter(d=>
+        (!campF||d.campaign===campF)&&(!typeF||d.campaignType===typeF)&&(!agF||d.adgroup===agF)&&(!devF||(d.device||'').includes(devF))
+    ), keyFn);
+    const list=Object.keys(cur).map(k=>{
+        const [media,camp,ag,type,device]=k.split('||');
+        if(media.toLowerCase().indexOf(search)===-1) return null;
+        const m=calcMetrics([cur[k]]); const pm=prev[k]?calcMetrics([prev[k]]):calcMetrics([]);
+        return {media,camp,ag,type,device,m,pm};
+    }).filter(Boolean).sort((a,b)=>b.m.conversions-a.m.conversions);
+    const prevLabel=weeks[1]?`${weeks[1]} 지난 데이터`:'지난 데이터';
+    let html='';
+    list.forEach((it,idx)=>{
+        html+=`<tr class="collapsible" data-key="${it.media}||${it.camp}||${it.device}" data-roas="${it.m.roas}">
+            <td><span class="rank-badge">${idx+1}</span></td>
+            <td class="text-col" title="${it.media}">${it.media}</td>
+            <td class="text-col" title="${it.camp}">${it.camp}</td>
+            <td class="text-col" title="${it.ag}">${it.ag}</td>
+            <td class="text-col" title="${it.device}">${it.device}</td>
+            <td class="text-col" title="${it.type}">${it.type}</td>
+            <td class="number">${formatCardValue('cost', it.m.cost)} <span class="badge-mini">${badge(getChangeRate(it.m.cost, it.pm.cost||0))}</span></td>
+            <td class="number">${formatCardValue('impressions', it.m.impressions)} <span class="badge-mini">${badge(getChangeRate(it.m.impressions, it.pm.impressions||0))}</span></td>
+            <td class="number">${formatCardValue('clicks', it.m.clicks)} <span class="badge-mini">${badge(getChangeRate(it.m.clicks, it.pm.clicks||0))}</span></td>
+            <td class="number">${formatCardValue('ctr', it.m.ctr)} <span class="badge-mini">${badge(getChangeRate(it.m.ctr, it.pm.ctr||0))}</span></td>
+            <td class="number">${formatCardValue('cpc', it.m.cpc)} <span class="badge-mini">${badge(getChangeRate(it.m.cpc, it.pm.cpc||0))}</span></td>
+            <td class="number">${formatCardValue('conversions', it.m.conversions)} <span class="badge-mini">${badge(getChangeRate(it.m.conversions, it.pm.conversions||0))}</span></td>
+            <td class="number">${formatCardValue('cvr', it.m.cvr)} <span class="badge-mini">${badge(getChangeRate(it.m.cvr, it.pm.cvr||0))}</span></td>
+            <td class="number">${formatCardValue('revenue', it.m.revenue)} <span class="badge-mini">${badge(getChangeRate(it.m.revenue, it.pm.revenue||0))}</span></td>
+            <td class="number">${formatCardValue('cpa', it.m.cpa)} <span class="badge-mini">${badge(getChangeRate(it.m.cpa, it.pm.cpa||0))}</span></td>
+            <td class="number" style="color:#111;">${formatCardValue('roas', it.m.roas)} <span class="badge-mini">${badge(getChangeRate(it.m.roas, it.pm.roas||0))}</span></td>
+        </tr>`;
+        html+=addDetailRow(16,`${it.media}||${it.camp}||${it.device}`,it.m,it.pm,prevLabel,it.m); // avg not used here
+    });
+    tbody.innerHTML = html || '<tr><td colspan="16" class="no-data">검색 결과가 없습니다.</td></tr>';
+    bindRowToggle('mediaBody'); clearROASFilter('mediaBody');
+}
+
+/* ============ 효율 ============ */
+function updateEfficiencyAnalysis(){
+    const brandEx=(document.getElementById('brandExclude').value||'').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
+    const typeF=document.getElementById('efficiencyCampaignTypeFilter').value;
+    const campF=document.getElementById('efficiencyCampaignFilter').value;
+    const agF=document.getElementById('efficiencyAdgroupFilter').value;
+    const costMin=+document.getElementById('filterCostMin').value;
+    const convMin=+document.getElementById('filterConvMin').value;
+    const roasMin=+document.getElementById('filterROASMin').value;
+    const cpaMin=+document.getElementById('filterCPAMin').value;
+    const curData=raw2Rows.filter(d=>weeks.includes(d.week) && (!typeF||d.campaignType===typeF) && (!campF||d.campaign===campF) && (!agF||d.adgroup===agF));
+    const curMap=aggregate(curData, d=>d.keyword||'미분류');
+    const prevMap=aggregate(raw2Rows.filter(d=>d.week===weeks[1]), d=>d.keyword||'미분류');
+    const good=[], bad=[];
+    Object.keys(curMap).forEach(k=>{
+        if(brandEx.some(ex=>ex && k.toLowerCase().includes(ex))) return;
+        const m=calcMetrics([{...curMap[k]}]);
+        const pm=prevMap[k]?calcMetrics([{...prevMap[k]}]):calcMetrics([]);
+        let ok=true;
+        if(!isNaN(costMin)&&m.cost<costMin) ok=false;
+        if(!isNaN(convMin)&&m.conversions<convMin) ok=false;
+        if(!isNaN(roasMin)&&m.roas<roasMin) ok=false;
+        if(!isNaN(cpaMin)&&m.cpa<cpaMin) ok=false;
+        const row={keyword:k, data:curMap[k].sample, m, pm};
+        if(ok) good.push(row); else bad.push(row);
+    });
+    const render=(arr, bodyId)=>{
+        const prevLabel=weeks[1]?`${weeks[1]} 지난 데이터`:'지난 데이터';
+        const allZero=arr.length>0 && arr.every(x=>x.m.conversions===0);
+        const sorted=arr.sort((a,b)=> allZero ? b.m.cost-a.m.cost : b.m.conversions-a.m.conversions);
+        const html=sorted.map((it,idx)=>`
+            <tr class="collapsible" data-key="${bodyId}_${it.keyword}">
+                <td><span class="rank-badge">${idx+1}</span></td>
+                <td class="text-col" title="${it.data.campaignType}">${it.data.campaignType||'-'}</td>
+                <td class="text-col" title="${it.keyword}"><strong>${it.keyword}</strong></td>
+                <td class="text-col" title="${it.data.campaign}">${it.data.campaign}</td>
+                <td class="text-col" title="${it.data.adgroup}">${it.data.adgroup}</td>
+                <td class="number">${formatCardValue('cost', it.m.cost)} <span class="badge-mini">${badge(getChangeRate(it.m.cost, it.pm.cost||0))}</span></td>
+                <td class="number">${formatCardValue('impressions', it.m.impressions)} <span class="badge-mini">${badge(getChangeRate(it.m.impressions, it.pm.impressions||0))}</span></td>
+                <td class="number">${formatCardValue('clicks', it.m.clicks)} <span class="badge-mini">${badge(getChangeRate(it.m.clicks, it.pm.clicks||0))}</span></td>
+                <td class="number">${formatCardValue('ctr', it.m.ctr)} <span class="badge-mini">${badge(getChangeRate(it.m.ctr, it.pm.ctr||0))}</span></td>
+                <td class="number">${formatCardValue('cpc', it.m.cpc)} <span class="badge-mini">${badge(getChangeRate(it.m.cpc, it.pm.cpc||0))}</span></td>
+                <td class="number">${formatCardValue('conversions', it.m.conversions)} <span class="badge-mini">${badge(getChangeRate(it.m.conversions, it.pm.conversions||0))}</span></td>
+                <td class="number">${formatCardValue('cpa', it.m.cpa)} <span class="badge-mini">${badge(getChangeRate(it.m.cpa, it.pm.cpa||0))}</span></td>
+                <td class="number" style="color:#111;">${formatCardValue('roas', it.m.roas)} <span class="badge-mini">${badge(getChangeRate(it.m.roas, it.pm.roas||0))}</span></td>
+            </tr>
+            ${addDetailRow(13, `${bodyId}_${it.keyword}`, it.m, it.pm, prevLabel, it.m)}
+        `).join('') || '<tr><td colspan="13" class="no-data">데이터 없음</td></tr>';
+        document.getElementById(bodyId).innerHTML = html;
+        bindRowToggle(bodyId);
+    };
+    render(good,'goodEfficiencyBody');
+    render(bad,'badEfficiencyBody');
+}
+
+/* ============ CPC ============ */
+function updateCPCAnalysis(){
+    const brandEx=(document.getElementById('cpcBrandExclude').value||'').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
+    const typeF=document.getElementById('cpcCampaignTypeFilter').value;
+    const campF=document.getElementById('cpcCampaignFilter').value;
+    const agF=document.getElementById('cpcAdgroupFilter').value;
+    const costMin=+document.getElementById('cpcCostMin').value;
+    const convMin=+document.getElementById('cpcConvMin').value;
+    const roasMin=+document.getElementById('cpcROASMin').value;
+    const cpaMax=+document.getElementById('cpcCPAMax').value;
+    const th=+document.getElementById('cpcChangeThreshold').value || 0;
+    const totalCost=sum(raw2Rows.filter(d=>weeks.includes(d.week)),'cost');
+    const curMap=aggregate(raw2Rows.filter(d=>{
+        return weeks.includes(d.week) && (!typeF||d.campaignType===typeF) && (!campF||d.campaign===campF) && (!agF||d.adgroup===agF);
+    }), d=>d.keyword||'미분류');
+    const prevMap=aggregate(raw2Rows.filter(d=>d.week===weeks[1]), d=>d.keyword||'미분류');
+    const up=[], down=[];
+    Object.keys(curMap).forEach(k=>{
+        if(brandEx.some(ex=>ex && k.toLowerCase().includes(ex))) return;
+        const cur=calcMetrics([{...curMap[k]}]);
+        const prev=prevMap[k]?calcMetrics([{...prevMap[k]}]):{cpc:0,cost:0,clicks:0,conversions:0,roas:0,impressions:0,ctr:0,revenue:0};
+        if(cur.cost===0) return;
+        if(!isNaN(costMin)&&cur.cost<costMin) return;
+        if(!isNaN(convMin)&&cur.conversions<convMin) return;
+        if(!isNaN(roasMin)&&cur.roas<roasMin) return;
+        if(!isNaN(cpaMax)&&cur.cpa>cpaMax) return;
+        const change=prev.cpc===0?100:((cur.cpc-prev.cpc)/prev.cpc*100);
+        const costShare= totalCost>0 ? (cur.cost/totalCost*100) : 0;
+        const row={keyword:k, data:curMap[k].sample, m:cur, pm:prev, change, costShare};
+        if(change>=th) up.push(row);
+        else if(change<=-th) down.push(row);
+    });
+    const render=(arr, bodyId, isUp)=>{
+        const prevLabel=weeks[1]?`${weeks[1]} 지난 데이터`:'지난 데이터';
+        const sorted=isUp ? arr.sort((a,b)=>b.change-a.change) : arr.sort((a,b)=>a.change-b.change);
+        const html=sorted.map((r,idx)=>`
+            <tr class="collapsible" data-key="${bodyId}_${r.keyword}">
+                <td><span class="rank-badge">${idx+1}</span></td>
+                <td class="text-col" title="${r.data.campaignType}">${r.data.campaignType||'-'}</td>
+                <td class="text-col" title="${r.keyword}"><strong>${r.keyword}</strong></td>
+                <td class="text-col" title="${r.data.campaign}">${r.data.campaign}</td>
+                <td class="text-col" title="${r.data.adgroup}">${r.data.adgroup}</td>
+                <td class="number">${formatCardValue('cpc', r.m.cpc)} <span class="badge-mini">${badge(getChangeRate(r.m.cpc, r.pm.cpc||0))}</span></td>
+                <td class="number">${r.change.toFixed(2)}%</td>
+                <td class="number">${formatCardValue('cost', r.m.cost)} <span class="badge-mini">${badge(getChangeRate(r.m.cost, r.pm.cost||0))}</span></td>
+                <td class="number">${r.costShare.toFixed(2)}%</td>
+                <td class="number">${formatCardValue('impressions', r.m.impressions)} <span class="badge-mini">${badge(getChangeRate(r.m.impressions, r.pm.impressions||0))}</span></td>
+                <td class="number">${formatCardValue('clicks', r.m.clicks)} <span class="badge-mini">${badge(getChangeRate(r.m.clicks, r.pm.clicks||0))}</span></td>
+                <td class="number">${formatCardValue('ctr', r.m.ctr)} <span class="badge-mini">${badge(getChangeRate(r.m.ctr, r.pm.ctr||0))}</span></td>
+                <td class="number">${formatCardValue('conversions', r.m.conversions)} <span class="badge-mini">${badge(getChangeRate(r.m.conversions, r.pm.conversions||0))}</span></td>
+                <td class="number">${formatCardValue('revenue', r.m.revenue)} <span class="badge-mini">${badge(getChangeRate(r.m.revenue, r.pm.revenue||0))}</span></td>
+                <td class="number" style="color:#111;">${formatCardValue('roas', r.m.roas)} <span class="badge-mini">${badge(getChangeRate(r.m.roas, r.pm.roas||0))}</span></td>
+            </tr>
+            ${addDetailRow(14, `${bodyId}_${r.keyword}`, r.m, r.pm, prevLabel, r.m)}
+        `).join('') || '<tr><td colspan="15" class="no-data">데이터 없음</td></tr>';
+        document.getElementById(bodyId).innerHTML = html;
+        bindRowToggle(bodyId);
+    };
+    render(up,'cpcUpBody',true);
+    render(down,'cpcDownBody',false);
+}
+
+/* ============ 디바이스 ============ */
+function updateDeviceTables(){
+    const std=+document.getElementById('standardROAS3').value;
+    const typeF=document.getElementById('deviceCampaignTypeFilter').value;
+    const prevLabel=weeks[1]?`${weeks[1]} 지난 데이터`:'지난 데이터';
+    updateDeviceSide('devicePCBody','PC',std,typeF,prevLabel);
+    updateDeviceSide('deviceMOBody','MO',std,typeF,prevLabel);
+    clearROASFilter('devicePCBody'); clearROASFilter('deviceMOBody');
+}
+function updateDeviceSide(bodyId, deviceLabel, std, typeF, prevLabel){
+    const tbody=document.getElementById(bodyId);
+    if(!currentWeekData.length){ tbody.innerHTML='<tr><td colspan="11" class="no-data">데이터를 업로드해주세요.</td></tr>'; return; }
+    const curMap={}, prevMap={}; let totalCost=0;
+    currentWeekData.forEach(d=>{
+        if(typeF && d.campaignType!==typeF) return;
+        const dev=(d.device||'').includes('PC')?'PC':'MO'; if(dev!==deviceLabel) return;
+        const camp=d.campaign||'미분류';
+        if(!curMap[camp]) curMap[camp]={cost:0, impressions:0, clicks:0, conversions:0, revenue:0};
+        curMap[camp].cost+=d.cost; curMap[camp].impressions+=d.impressions; curMap[camp].clicks+=d.clicks; curMap[camp].conversions+=d.conversions; curMap[camp].revenue+=d.revenue;
+        totalCost+=d.cost;
+    });
+    previousWeekData.forEach(d=>{
+        if(typeF && d.campaignType!==typeF) return;
+        const dev=(d.device||'').includes('PC')?'PC':'MO'; if(dev!==deviceLabel) return;
+        const camp=d.campaign||'미분류';
+        if(!prevMap[camp]) prevMap[camp]={cost:0, impressions:0, clicks:0, conversions:0, revenue:0};
+        prevMap[camp].cost+=d.cost; prevMap[camp].impressions+=d.impressions; prevMap[camp].clicks+=d.clicks; prevMap[camp].conversions+=d.conversions; prevMap[camp].revenue+=d.revenue;
+    });
+    const rows=Object.keys(curMap).map(camp=>{
+        const m=calcMetrics([curMap[camp]]); const pm=prevMap[camp]?calcMetrics([prevMap[camp]]):calcMetrics([]);
+        const costShare= totalCost>0 ? (curMap[camp].cost/totalCost*100):0;
+        return {camp, costShare, m, pm};
+    }).sort((a,b)=>b.m.cost-a.m.cost);
+    let html='';
+    rows.forEach((r,idx)=>{
+        html+=`<tr class="collapsible" data-key="${bodyId}_${r.camp}" data-roas="${r.m.roas}">
+            <td><span class="rank-badge">${idx+1}</span></td>
+            <td class="text-col" title="${r.camp}">${r.camp}</td>
+            <td class="number">${formatCardValue('cost', r.m.cost)}</td>
+            <td class="number">${r.costShare.toFixed(1)}%</td>
+            <td class="number">${formatCardValue('impressions', r.m.impressions)}</td>
+            <td class="number">${formatCardValue('clicks', r.m.clicks)}</td>
+            <td class="number">${formatCardValue('conversions', r.m.conversions)} <span class="badge-mini">${badge(getChangeRate(r.m.conversions, r.pm.conversions||0))}</span></td>
+            <td class="number">${formatCardValue('revenue', r.m.revenue)}</td>
+            <td class="number">${formatCardValue('cpa', r.m.cpa)}</td>
+            <td class="number" style="color:#111;">${formatCardValue('roas', r.m.roas)}</td>
+            <td class="number">${badge(getChangeRate(r.m.roas, r.pm.roas||0))}</td>
+        </tr>`;
+        html+=addDetailRow(11, `${bodyId}_${r.camp}`, r.m, r.pm, prevLabel, r.m);
+    });
+    tbody.innerHTML = html || '<tr><td colspan="11" class="no-data">검색 결과가 없습니다.</td></tr>';
+    bindRowToggle(bodyId);
+}
+function applyROASFilterDevice(direction){
+    const std=+document.getElementById('standardROAS3').value;
+    ['devicePCBody','deviceMOBody'].forEach(id=>{
+        const tbody=document.getElementById(id);
+        if(isNaN(std)) return;
+        tbody.querySelectorAll('tr.collapsible').forEach(tr=>{
+            const roas=parseFloat(tr.getAttribute('data-roas'));
+            tr.classList.toggle('low-roas', direction==='low' ? roas<std : (direction==='up'? roas<std : roas>std));
+        });
+    });
+}
+function resetDevice(){ document.getElementById('deviceCampaignTypeFilter').value=''; document.getElementById('standardROAS3').value=''; updateDeviceTables(); }
+
+/* 리셋들 */
+function resetCampaign(){ document.getElementById('campaignFilter').value=''; document.getElementById('campaignTypeFilter').value=''; document.getElementById('campaignDeviceFilter').value=''; document.getElementById('campaignCampaignFilter').value=''; document.getElementById('campaignAdgroupFilter').value=''; document.getElementById('standardROAS').value=''; clearROASFilter('campaignBody'); updateCampaignTable(); }
+function resetAdgroup(){ document.getElementById('adgroupFilter').value=''; document.getElementById('adgroupCampaignFilter').value=''; document.getElementById('adgroupCampaignTypeFilter').value=''; document.getElementById('adgroupDeviceFilter').value=''; document.getElementById('standardROAS_AG').value=''; clearROASFilter('adgroupBody'); updateAdgroupTable(); }
+function resetKeyword(){ document.getElementById('keywordSearch').value=''; document.getElementById('deviceFilter').value=''; document.getElementById('keywordCampaignFilter').value=''; document.getElementById('keywordCampaignTypeFilter').value=''; document.getElementById('keywordAdgroupFilter').value=''; document.getElementById('standardROAS2').value=''; clearROASFilter('keywordBody'); keywordPage = 1; updateKeywordTable(true); }
+function resetMedia(){ document.getElementById('mediaFilter').value=''; document.getElementById('mediaCampaignFilter').value=''; document.getElementById('mediaCampaignTypeFilter').value=''; document.getElementById('mediaAdgroupFilter').value=''; document.getElementById('mediaDeviceFilter').value=''; document.getElementById('standardROAS_MEDIA').value=''; clearROASFilter('mediaBody'); updateMediaTable(); }
+function resetEfficiency(){ document.getElementById('brandExclude').value=''; document.getElementById('efficiencyCampaignTypeFilter').value=''; document.getElementById('efficiencyCampaignFilter').value=''; document.getElementById('efficiencyAdgroupFilter').value=''; document.getElementById('filterCostMin').value=''; document.getElementById('filterConvMin').value=''; document.getElementById('filterROASMin').value=''; document.getElementById('filterCPAMin').value=''; updateEfficiencyAnalysis(); }
+function resetCPC(){ document.getElementById('cpcBrandExclude').value=''; document.getElementById('cpcCampaignTypeFilter').value=''; document.getElementById('cpcCampaignFilter').value=''; document.getElementById('cpcAdgroupFilter').value=''; document.getElementById('cpcCostMin').value=''; document.getElementById('cpcConvMin').value=''; document.getElementById('cpcROASMin').value=''; document.getElementById('cpcCPAMax').value=''; document.getElementById('cpcChangeThreshold').value=''; updateCPCAnalysis(); }
+function resetProduct(){ document.getElementById('productFilter').value=''; document.getElementById('productCampaignFilter').value=''; document.getElementById('productAdgroupFilter').value=''; document.getElementById('productDeviceFilter').value=''; document.getElementById('standardROAS_PROD').value=''; clearROASFilter('productBody'); updateProductTable(); }
+
+/* ============ 상품 분석 ============ */
+function updateProductTable(){
+    const tbody=document.getElementById('productBody');
+    if(!productRows.length || !Object.keys(productMap).length){ 
+        tbody.innerHTML='<tr><td colspan="15" class="no-data">상품 데이터를 업로드해주세요.</td></tr>'; 
+        return; 
+    }
+    const filter=(document.getElementById('productFilter').value||'').toLowerCase();
+    const campF=document.getElementById('productCampaignFilter').value;
+    const agF=document.getElementById('productAdgroupFilter').value;
+    const devF=document.getElementById('productDeviceFilter').value;
+    
+    const curData = productRows.filter(d => weeks.includes(d.week) && d.week === weeks[0] &&
+        (!campF||d.campaign===campF) && (!agF||d.adgroup===agF));
+    const prevData = productRows.filter(d => d.week === weeks[1] &&
+        (!campF||d.campaign===campF) && (!agF||d.adgroup===agF));
+    
+    const curMap = aggregate(curData, d=>d.productId||'미분류');
+    const prevMap = aggregate(prevData, d=>d.productId||'미분류');
+    const fourWeeks = productRows.filter(d=>weeks.includes(d.week) &&
+        (!campF||d.campaign===campF) && (!agF||d.adgroup===agF));
+    const avgMap = aggregate(fourWeeks, d=>d.productId||'미분류');
+    const denom = weeks.length || 1;
+    
+    const list=Object.keys(curMap).map(k=>{
+        const productInfo = productMap[k] || {name: k, image: ''};
+        if(filter && productInfo.name.toLowerCase().indexOf(filter)===-1) return null;
+        
+        const m=calcMetrics([curMap[k]]); 
+        const pm=prevMap[k]?calcMetrics([prevMap[k]]):calcMetrics([]);
+        let avgM = {cost:0,impressions:0,clicks:0,conversions:0,revenue:0,roas:0};
+        if(avgMap[k]) {
+            ['cost','impressions','clicks','conversions','revenue'].forEach(key => avgM[key] = avgMap[k][key]/denom);
+            avgM.roas = avgM.cost>0 ? (avgM.revenue/avgM.cost)*100 : 0;
+        }
+        return {productId:k, productInfo, data:curMap[k].sample, m, pm, avgM};
+    }).filter(Boolean).sort((a,b)=>b.m.conversions-a.m.conversions);
+    
+    // Add product filter options
+    const camps=[...new Set(productRows.map(d=>d.campaign).filter(Boolean))].sort();
+    const adgs=[...new Set(productRows.map(d=>d.adgroup).filter(Boolean))].sort();
+    const setOpts=(id,arr,label)=>{ const el=document.getElementById(id); if(!el) return; el.innerHTML=`<option value="">${label}</option>`+arr.map(v=>`<option value="${v}">${v}</option>`).join(''); };
+    setOpts('productCampaignFilter', camps, '캠페인 전체');
+    setOpts('productAdgroupFilter', adgs, '광고그룹 전체');
+    
+    let html=generateTotalRowHTML(list,15,'product');
+    const prevLabel=weeks[1]?`${weeks[1]} 지난 데이터`:'지난 데이터';
+    list.forEach((it,idx)=>{
+        const imgSrc = it.productInfo.image || '';
+        const imgTag = imgSrc ? `<img src="${imgSrc}" style="width:40px; height:40px; object-fit:cover; border-radius:4px;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22%3E%3Crect fill=%22%23ddd%22 width=%2240%22 height=%2240%22/%3E%3C/svg%3E'">` : '<div style="width:40px; height:40px; background:#ddd; border-radius:4px;"></div>';
+        html+=`<tr class="collapsible" data-key="${it.productId}" data-roas="${it.m.roas}">
+            <td><span class="rank-badge">${idx+1}</span></td>
+            <td>${imgTag}</td>
+            <td style="text-align:left;" class="text-col" title="${it.productInfo.name}">${it.productInfo.name}</td>
+            <td class="text-col" title="${it.data.campaign}">${it.data.campaign}</td>
+            <td class="text-col" title="${it.data.adgroup}">${it.data.adgroup}</td>
+            <td class="number">${formatCardValue('cost', it.m.cost)} <span class="badge-mini">${badge(getChangeRate(it.m.cost, it.pm.cost||0))}</span></td>
+            <td class="number">${formatCardValue('impressions', it.m.impressions)} <span class="badge-mini">${badge(getChangeRate(it.m.impressions, it.pm.impressions||0))}</span></td>
+            <td class="number">${formatCardValue('clicks', it.m.clicks)} <span class="badge-mini">${badge(getChangeRate(it.m.clicks, it.pm.clicks||0))}</span></td>
+            <td class="number">${formatCardValue('ctr', it.m.ctr)} <span class="badge-mini">${badge(getChangeRate(it.m.ctr, it.pm.ctr||0))}</span></td>
+            <td class="number">${formatCardValue('cpc', it.m.cpc)} <span class="badge-mini">${badge(getChangeRate(it.m.cpc, it.pm.cpc||0))}</span></td>
+            <td class="number">${formatCardValue('conversions', it.m.conversions)} <span class="badge-mini">${badge(getChangeRate(it.m.conversions, it.pm.conversions||0))}</span></td>
+            <td class="number">${formatCardValue('cvr', it.m.cvr)} <span class="badge-mini">${badge(getChangeRate(it.m.cvr, it.pm.cvr||0))}</span></td>
+            <td class="number">${formatCardValue('revenue', it.m.revenue)} <span class="badge-mini">${badge(getChangeRate(it.m.revenue, it.pm.revenue||0))}</span></td>
+            <td class="number">${formatCardValue('cpa', it.m.cpa)} <span class="badge-mini">${badge(getChangeRate(it.m.cpa, it.pm.cpa||0))}</span></td>
+            <td class="number" style="color:#111;">${formatCardValue('roas', it.m.roas)} <span class="badge-mini">${badge(getChangeRate(it.m.roas, it.pm.roas||0))}</span></td>
+        </tr>`;
+        html+=addDetailRow(15,it.productId,it.m,it.pm,prevLabel,it.avgM);
+    });
+    tbody.innerHTML = html || '<tr><td colspan="15" class="no-data">검색 결과가 없습니다.</td></tr>';
+    bindRowToggle('productBody'); clearROASFilter('productBody');
+}
+
+/* ============ TOP10 테이블 ============ */
+function updateTop10Tables(){
+    const container = document.getElementById('top10Grid');
+    if(!raw2Rows.length){ container.innerHTML=''; return; }
+    
+    const curData = raw2Rows.filter(d => d.week === weeks[0]);
+    const kwMap = aggregate(curData, d=>d.keyword||'미분류');
+    
+    const metrics = [
+        {key:'cost', label:'광고비'},
+        {key:'impressions', label:'노출수'},
+        {key:'clicks', label:'클릭수'},
+        {key:'conversions', label:'전환수'},
+        {key:'revenue', label:'매출액'}
+    ];
+    
+    container.innerHTML = metrics.map(metric => {
+        const sorted = Object.keys(kwMap).map(k => {
+            const m = calcMetrics([kwMap[k]]);
+            return {keyword:k, value:m[metric.key]};
+        }).sort((a,b)=>b.value-a.value).slice(0,10);
+        
+        let tableHTML = `<table class="top10-table"><thead><tr><th colspan="2">${metric.label} TOP 10</th></tr></thead><tbody>`;
+        sorted.forEach((item,idx)=>{
+            tableHTML += `<tr><td style="width:25px; text-align:center; font-weight:bold; color:#007bff;">${idx+1}</td><td>${item.keyword}</td></tr>`;
+        });
+        tableHTML += '</tbody></table>';
+        return tableHTML;
+    }).join('');
+}
+
+/* ============ 드래그&드롭 초기화 ============ */
+function initDragAndDrop() {
+    const dropzones = [
+        {id: 'dropzoneRaw', fileInputId: 'fileInputRaw', kind: 'raw'},
+        {id: 'dropzoneRaw2', fileInputId: 'fileInputRaw2', kind: 'raw2'},
+        {id: 'dropzoneProduct', fileInputId: 'fileInputProduct', kind: 'product'},
+        {id: 'dropzoneTSV', fileInputId: 'fileInputTSV', kind: 'tsv'}
+    ];
+    
+    dropzones.forEach(zone => {
+        const dropzoneEl = document.getElementById(zone.id);
+        if(!dropzoneEl) return;
+        
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzoneEl.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // Highlight drop zone when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzoneEl.addEventListener(eventName, () => {
+                dropzoneEl.style.borderColor = '#007bff';
+                dropzoneEl.style.background = '#f0f7ff';
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzoneEl.addEventListener(eventName, () => {
+                dropzoneEl.style.borderColor = '';
+                dropzoneEl.style.background = '';
+            }, false);
+        });
+        
+        // Handle dropped files
+        dropzoneEl.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if(files.length > 0) {
+                const fileInput = document.getElementById(zone.fileInputId);
+                if(fileInput) {
+                    // Create a new FileList-like object
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(files[0]);
+                    fileInput.files = dataTransfer.files;
+                    
+                    // Trigger the change event
+                    const event = new Event('change', { bubbles: true });
+                    fileInput.dispatchEvent(event);
+                }
+            }
+        }, false);
+    });
+}
+
+// Initialize drag and drop when page loads
+if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDragAndDrop);
+} else {
+    initDragAndDrop();
+}
+</script>
+</body>
+</html>
