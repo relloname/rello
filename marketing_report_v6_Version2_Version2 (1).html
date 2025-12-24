@@ -917,14 +917,25 @@ function parseCreativeCSV(buf, kind){
     Papa.parse(text, {
         skipEmptyLines: true,
         complete: (result) => {
+            if(result.errors && result.errors.length > 0) {
+                console.error('CSV parsing errors:', result.errors);
+                showStatus('❌ CSV 파싱 중 오류 발생', 'error');
+                return;
+            }
+            if(!result.data || result.data.length === 0) {
+                console.error('No data found in CSV');
+                showStatus('❌ CSV 파일에 데이터가 없습니다', 'error');
+                return;
+            }
             const rows = result.data;
-            const headRow = rows.findIndex(r => r.join(',').includes('캠페인유형'));
+            const headRow = rows.findIndex(r => r && r.join && r.join(',').includes('캠페인유형'));
             if(headRow === -1) {
                 console.error('Header row not found');
+                showStatus('❌ CSV 파일 형식이 올바르지 않습니다', 'error');
                 return;
             }
             creativeRows = rows.slice(headRow + 1)
-                .filter(r => r[0] === '쇼핑검색')
+                .filter(r => r && r[0] === '쇼핑검색')
                 .map(r => ({
                     campaignType: r[0],
                     campaign: r[1],
@@ -2144,11 +2155,17 @@ function initDragAndDrop() {
                 const inputId = 'fileInput' + zone;
                 const input = document.getElementById(inputId);
                 if(input) {
-                    // Create a new DataTransfer to assign files
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(files[0]);
-                    input.files = dataTransfer.files;
-                    input.dispatchEvent(new Event('change'));
+                    try {
+                        // Create a new DataTransfer to assign files
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(files[0]);
+                        input.files = dataTransfer.files;
+                        input.dispatchEvent(new Event('change'));
+                    } catch(e) {
+                        // Fallback for older browsers: trigger click to open file dialog
+                        console.warn('DataTransfer not supported, please click to upload');
+                        input.click();
+                    }
                 }
             }
         });
