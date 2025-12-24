@@ -2024,14 +2024,16 @@ function updateCreativeTable(){
     // Render table
     let html = list.map((it, idx) => {
         const imgSrc = it.image || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E';
+        // Validate image URL (allow http, https, data protocols)
+        const isValidImageUrl = /^(https?:\/\/|data:image\/)/.test(imgSrc);
+        const safeImgSrc = isValidImageUrl ? imgSrc : 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E';
         // Escape HTML to prevent XSS
         const escapedCampaign = escapeHtml(it.campaign);
         const escapedAdgroup = escapeHtml(it.adgroup);
         const escapedProductName = escapeHtml(it.productName);
-        const escapedImgSrc = escapeHtml(imgSrc);
         return `<tr>
             <td><span class="rank-badge">${idx+1}</span></td>
-            <td><img src="${escapedImgSrc}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
+            <td><img src="${safeImgSrc}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
             <td class="text-col" title="${escapedCampaign}">${escapedCampaign}</td>
             <td class="text-col" title="${escapedAdgroup}">${escapedAdgroup}</td>
             <td style="text-align:left; max-width:250px; overflow:hidden; text-overflow:ellipsis;" title="${escapedProductName}">${escapedProductName}</td>
