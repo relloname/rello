@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Marketing Report v6</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 16px; }
     .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
@@ -20,12 +23,67 @@
     .card { border: 1px solid #e5e5e5; border-radius: 8px; padding: 12px; min-width: 220px; }
     .card h3 { margin: 0 0 8px 0; font-size: 14px; }
     .kpi { font-size: 22px; font-weight: 700; }
+
+    /* Tab Navigation Styles */
+    .nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e5e5e5; padding-bottom: 8px; }
+    .tab-btn { padding: 10px 20px; border: none; background: #f4f4f4; cursor: pointer; border-radius: 8px 8px 0 0; font-size: 14px; transition: all 0.3s; }
+    .tab-btn:hover { background: #e0e0e0; }
+    .tab-btn.active { background: #4a90e2; color: white; font-weight: bold; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Scoped styles for creative tab */
+    #creative-tab-content { font-family: 'Malgun Gothic', Arial, sans-serif; background: white; }
+    #creative-tab-content .container { max-width: 100%; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    #creative-tab-content #uploadSection { display: flex; gap: 20px; padding: 20px; background: #eee; border-radius: 8px; align-items: flex-end; margin-bottom: 20px; }
+    #creative-tab-content .file-input-group { display: flex; flex-direction: column; font-size: 12px; font-weight: bold; gap: 5px; }
+    #creative-tab-content .filter-section { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid #eee; align-items: center; }
+    #creative-tab-content .card { min-width: 120px; padding: 10px 15px; background: white; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s; flex-shrink: 0; font-size: 13px; }
+    #creative-tab-content .card.active { border: 2px solid #00c73c; background: #f0fff4; font-weight: bold; }
+    #creative-tab-content .card:hover { background: #f9f9f9; }
+    #creative-tab-content .reset-btn { padding: 8px 18px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; flex-shrink: 0; }
+    #creative-tab-content .reset-btn:hover { background: #c0392b; }
+    #creative-tab-content .table-wrapper { overflow-x: auto; max-height: 500px; border: 1px solid #eee; border-radius: 8px; }
+    #creative-tab-content table { width: 100%; border-collapse: collapse; min-width: 1800px; }
+    #creative-tab-content th { background: #f1f3f4; padding: 12px; font-size: 12px; cursor: pointer; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #ddd; white-space: nowrap; }
+    #creative-tab-content td { border-bottom: 1px solid #eee; padding: 10px; text-align: center; font-size: 13px; line-height: 1.4; white-space: nowrap; }
+    #creative-tab-content .col-campaign, #creative-tab-content .col-adgroup { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #creative-tab-content .col-product { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+    #creative-tab-content .diff { font-size: 10px; color: #888; }
+    #creative-tab-content .up { color: #ff4d4d; }
+    #creative-tab-content .down { color: #3182ce; }
+    #creative-tab-content #detailSection { margin-top: 30px; padding: 25px; border: 1px solid #ddd; border-radius: 12px; display: none; background: #fff; }
+    #creative-tab-content .tab-area { display: flex; gap: 8px; margin-top: 25px; margin-bottom: 20px; flex-wrap: wrap; }
+    #creative-tab-content .tab-btn { padding: 8px 16px; border: 1px solid #ddd; border-radius: 20px; background: #fff; cursor: pointer; font-size: 12px; transition: 0.2s; }
+    #creative-tab-content .tab-btn.active { background: #00c73c; color: white; border-color: #00c73c; }
+    #creative-tab-content .tab-btn:hover { background: #f0f0f0; }
+    #creative-tab-content .chart-grid { display: flex; flex-direction: column; gap: 20px; }
+    #creative-tab-content .chart-container { border: 1px solid #f0f0f0; padding: 15px; border-radius: 8px; background: #fafafa; position: relative; }
+    #creative-tab-content .chart-box { height: 350px; margin-bottom: 15px; background: white; padding: 10px; border-radius: 6px; }
+    #creative-tab-content .stats-row { display: flex; gap: 15px; margin-bottom: 15px; background: white; padding: 10px; border-radius: 8px; border: 1px solid #eee; justify-content: space-around; }
+    #creative-tab-content .stat-item { text-align: center; flex: 1; border-right: 1px solid #eee; }
+    #creative-tab-content .stat-item:last-child { border-right: none; }
+    #creative-tab-content .stat-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+    #creative-tab-content .stat-value { font-size: 14px; font-weight: bold; color: #2c3e50; }
+    #creative-tab-content .stat-value.max { color: #ff4d4d; }
+    #creative-tab-content .stat-value.min { color: #3182ce; }
+    #creative-tab-content canvas { width: 100% !important; height: 100% !important; }
+    #creative-tab-content .img-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
+    #creative-tab-content .badge-group { background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; }
   </style>
 </head>
 <body>
   <h1>Marketing Report <span class="pill">v6</span></h1>
   <p class="muted">Interactive HTML report. Use filters below to slice the data.</p>
 
+  <!-- Tab Navigation -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab(event, 'overview')">📊 Overview</button>
+    <button class="tab-btn" onclick="switchTab(event, 'creative')">🖼️ 소재 분석</button>
+  </div>
+
+  <!-- Overview Tab Content -->
+  <div id="overview" class="tab-content active">
   <div class="controls" id="controls">
     <div class="control">
       <label for="dateFrom">Date from</label>
@@ -80,8 +138,96 @@
     </thead>
     <tbody id="tbody"></tbody>
   </table>
+  </div>
+  <!-- End Overview Tab -->
+
+  <!-- Creative Analysis Tab Content -->
+  <div id="creative" class="tab-content">
+    <div id="creative-tab-content">
+      <h2>🛍️ 쇼핑검색 통합 대시보드 (최근 7일 vs 지난주)</h2>
+      
+      <div id="uploadSection">
+          <div class="file-input-group"><label>1. 상품 정보 (TSV)</label><input type="file" id="tsvFile" accept=".tsv"></div>
+          <div class="file-input-group"><label>2. 성과 보고서 (CSV)</label><input type="file" id="csvFile" accept=".csv"></div>
+          <button onclick="startCreativeAnalysis()" style="background:#00c73c; color:white; border:none; padding:10px 25px; border-radius:6px; cursor:pointer; font-weight:bold;">데이터 분석 실행</button>
+      </div>
+
+      <div id="resultArea" style="display:none;">
+          <div id="cpCards" class="filter-section"></div>
+          <div id="grCards" class="filter-section"></div>
+          
+          <div class="table-wrapper">
+              <table>
+                  <thead>
+                      <tr>
+                          <th>이미지</th>
+                          <th onclick="cr_resort('cp')" class="col-campaign">캠페인</th>
+                          <th onclick="cr_resort('gr')" class="col-adgroup">광고그룹</th>
+                          <th class="col-product">상품명</th>
+                          <th onclick="cr_resort('cost')">광고비</th>
+                          <th onclick="cr_resort('view')">노출수</th>
+                          <th onclick="cr_resort('click')">클릭수</th>
+                          <th onclick="cr_resort('ctr')">클릭율</th>
+                          <th onclick="cr_resort('cpc')">CPC</th>
+                          <th onclick="cr_resort('cv')">전환수</th>
+                          <th onclick="cr_resort('amt')">매출액</th>
+                          <th onclick="cr_resort('roas')">ROAS</th>
+                      </tr>
+                  </thead>
+                  <tbody id="tableBody"></tbody>
+              </table>
+          </div>
+
+          <div id="detailSection">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <h3 id="detailTitle" style="margin:0;"></h3>
+                  <button onclick="document.getElementById('detailSection').style.display='none'" style="color:red; border:none; background:none; cursor:pointer; font-weight:bold; font-size: 16px;">[✕ 닫기]</button>
+              </div>
+              <div class="tab-area" id="tabArea"></div>
+              <div class="chart-grid">
+                  <div class="chart-container">
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                          <h5 style="margin:0;">📅 일별 추이</h5>
+                      </div>
+                      <div id="dayStats" class="stats-row"></div>
+                      <div class="chart-box"><canvas id="dayChart"></canvas></div>
+                  </div>
+                  <div class="chart-container">
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                          <h5 style="margin:0;">📊 주별 추이 (최근 4주)</h5>
+                      </div>
+                      <div id="weekStats" class="stats-row"></div>
+                      <div class="chart-box"><canvas id="weekChart"></canvas></div>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+  </div>
+  <!-- End Creative Tab -->
 
   <script>
+    // ----- Tab Switching Function -----
+    function switchTab(event, tabName) {
+      // Hide all tab contents
+      const tabContents = document.getElementsByClassName('tab-content');
+      for (let i = 0; i < tabContents.length; i++) {
+        tabContents[i].classList.remove('active');
+      }
+      
+      // Remove active class from all tab buttons
+      const tabBtns = document.getElementsByClassName('tab-btn');
+      for (let i = 0; i < tabBtns.length; i++) {
+        tabBtns[i].classList.remove('active');
+      }
+      
+      // Show the selected tab content
+      document.getElementById(tabName).classList.add('active');
+      
+      // Add active class to the clicked button
+      event.currentTarget.classList.add('active');
+    }
+
     // ----- Data (example / placeholder) -----
     // In the real report, this would be embedded/loaded. We preserve existing behavior.
     const data = window.__MARKETING_REPORT_DATA__ || [
@@ -231,6 +377,405 @@
     }
 
     init();
+
+    // ========================================
+    // Creative Analysis Tab JavaScript
+    // ========================================
+    let cr_raw = [], cr_pMap = {}, cr_aggList = [];
+    let cr_dChart = null, cr_wChart = null;
+    let cr_metric = 'amt';
+    let cr_sKey = 'cv', cr_sDir = 'desc', cr_activeMat = null;
+    let cr_filterCp = null, cr_filterGr = null;
+
+    const cr_metricNames = { 
+        amt:'매출액', 
+        cost:'광고비', 
+        view:'노출수', 
+        click:'클릭수', 
+        cv:'전환수', 
+        ctr:'클릭율(%)', 
+        cvr:'전환율(%)', 
+        roas:'ROAS(%)',
+        cpc:'CPC'
+    };
+
+    function startCreativeAnalysis() {
+        const tsv = document.getElementById('tsvFile').files[0];
+        const csv = document.getElementById('csvFile').files[0];
+        if(!tsv || !csv) return alert("파일을 업로드해주세요.");
+
+        Papa.parse(tsv, { delimiter: "\t", complete: (t) => {
+            t.data.forEach(r => { 
+                if(r[2]) cr_pMap[r[2].trim()] = { name: r[14], img: r[15] }; 
+            });
+            
+            Papa.parse(csv, { encoding: "EUC-KR", skipEmptyLines: true, complete: (c) => {
+                const headRow = c.data.findIndex(r => r.join(',').includes("캠페인유형"));
+                cr_raw = c.data.slice(headRow + 1)
+                    .filter(r => r[0] === "쇼핑검색")
+                    .map(r => ({
+                        cp: r[1], 
+                        gr: r[2], 
+                        mat: r[3].trim(), 
+                        date: r[6], 
+                        week: r[7],
+                        cost: Number(r[8]||0), 
+                        view: Number(r[9]||0), 
+                        click: Number(r[10]||0), 
+                        cv: Number(r[11]||0), 
+                        amt: Number(r[12]||0)
+                    }));
+                
+                document.getElementById('uploadSection').style.display = 'none';
+                document.getElementById('resultArea').style.display = 'block';
+                
+                cr_resetFilters();
+            }});
+        }});
+    }
+
+    function cr_resetFilters() {
+        cr_filterCp = null;
+        cr_filterGr = null;
+        cr_renderFilters();
+        cr_refresh();
+    }
+
+    function cr_setCP(c) { 
+        cr_filterCp = c; 
+        cr_filterGr = null; 
+        cr_renderFilters(); 
+        cr_refresh(); 
+    }
+    
+    function cr_setGR(g) { 
+        cr_filterGr = g; 
+        cr_renderFilters(); 
+        cr_refresh(); 
+    }
+
+    function cr_renderFilters() {
+        const cps = [...new Set(cr_raw.map(d => d.cp))];
+        let h = `<button class="reset-btn" onclick="cr_resetFilters()">🔄 초기화</button>`;
+        h += `<div class="card ${!cr_filterCp?'active':''}" onclick="cr_setCP(null)">전체 캠페인</div>`;
+        cps.forEach(c => h += `<div class="card ${cr_filterCp===c?'active':''}" onclick="cr_setCP('${c}')">${c}</div>`);
+        document.getElementById('cpCards').innerHTML = h;
+
+        if(cr_filterCp) {
+            const grs = [...new Set(cr_raw.filter(d => d.cp === cr_filterCp).map(d => d.gr))];
+            let gh = `<div class="card ${!cr_filterGr?'active':''}" onclick="cr_setGR(null)">전체 광고그룹</div>`;
+            grs.forEach(g => gh += `<div class="card ${cr_filterGr===g?'active':''}" onclick="cr_setGR('${g}')">${g}</div>`);
+            document.getElementById('grCards').innerHTML = gh;
+        } else {
+            document.getElementById('grCards').innerHTML = '';
+        }
+    }
+
+    function cr_refresh() {
+        const allDates = [...new Set(cr_raw.map(d=>d.date))].sort().reverse();
+        const curDates = allDates.slice(0, 7);
+        const preDates = allDates.slice(7, 14);
+
+        let filtered = cr_raw.filter(d => 
+            (!cr_filterCp || d.cp === cr_filterCp) &&
+            (!cr_filterGr || d.gr === cr_filterGr)
+        );
+
+        const agg = {};
+        const gCheck = {};
+        
+        filtered.forEach(r => {
+            const pName = cr_pMap[r.mat]?.name || "알수없음";
+            const gk = `${r.cp}_${r.gr}_${pName}`;
+            if(!gCheck[gk]) gCheck[gk] = new Set(); 
+            gCheck[gk].add(r.mat);
+            
+            if(!agg[r.mat]) {
+                agg[r.mat] = { 
+                    cp: r.cp, gr: r.gr, mat: r.mat,
+                    cost:0, view:0, click:0, cv:0, amt:0, 
+                    pCost:0, pView:0, pClick:0, pCv:0, pAmt:0 
+                };
+            }
+            
+            if(curDates.includes(r.date)) { 
+                agg[r.mat].cost += r.cost; 
+                agg[r.mat].view += r.view; 
+                agg[r.mat].click += r.click; 
+                agg[r.mat].cv += r.cv; 
+                agg[r.mat].amt += r.amt; 
+            }
+            if(preDates.includes(r.date)) { 
+                agg[r.mat].pCost += r.cost; 
+                agg[r.mat].pView += r.view; 
+                agg[r.mat].pClick += r.click; 
+                agg[r.mat].pCv += r.cv; 
+                agg[r.mat].pAmt += r.amt; 
+            }
+        });
+
+        cr_aggList = Object.values(agg).map(r => {
+            const pName = cr_pMap[r.mat]?.name || "매칭실패";
+            return {
+                ...r, 
+                pName: pName,
+                pImg: cr_pMap[r.mat]?.img || "",
+                isG: gCheck[`${r.cp}_${r.gr}_${pName}`]?.size > 1,
+                ctr: r.view > 0 ? (r.click / r.view * 100) : 0, 
+                cpc: r.click > 0 ? (r.cost / r.click) : 0, 
+                roas: r.cost > 0 ? (r.amt / r.cost * 100) : 0,
+                pCtr: r.pView > 0 ? (r.pClick / r.pView * 100) : 0,
+                pCpc: r.pClick > 0 ? (r.pCost / r.pClick) : 0,
+                pRoas: r.pCost > 0 ? (r.pAmt / r.pCost * 100) : 0
+            };
+        });
+
+        cr_aggList.sort((a,b) => {
+            if(cr_sDir === 'desc') {
+                return b[cr_sKey] > a[cr_sKey] ? 1 : -1;
+            } else {
+                return a[cr_sKey] > b[cr_sKey] ? 1 : -1;
+            }
+        });
+        
+        const getDiff = (cur, pre) => {
+            if(pre === 0 || pre === null || pre === undefined) return '';
+            const d = ((cur - pre) / pre * 100).toFixed(0);
+            if(Math.abs(d) < 0.5) return ''; // 0.5% 미만 변화는 표시 안함
+            if(d > 0) return `<span class="diff up">(▲${d}%)</span>`;
+            if(d < 0) return `<span class="diff down">(▼${Math.abs(d)}%)</span>`;
+            return '';
+        };
+
+        document.getElementById('tableBody').innerHTML = cr_aggList.map(r => `
+            <tr onclick="cr_viewDetail('${r.mat}')" style="cursor:pointer;">
+                <td><img src="${r.pImg}" class="img-thumb" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
+                <td class="col-campaign" style="color:#2b6cb0;" title="${r.cp}">${r.cp}</td>
+                <td class="col-adgroup" style="color:#c05621;" title="${r.gr}">${r.gr}</td>
+                <td class="col-product" title="${r.pName}"><b>${r.pName}</b>${r.isG?'<span class="badge-group">그룹</span>':''}</td>
+                <td>${r.cost.toLocaleString()}${getDiff(r.cost, r.pCost)}</td>
+                <td>${r.view.toLocaleString()}${getDiff(r.view, r.pView)}</td>
+                <td>${r.click.toLocaleString()}${getDiff(r.click, r.pClick)}</td>
+                <td>${r.ctr.toFixed(2)}%${getDiff(r.ctr, r.pCtr)}</td>
+                <td>${Math.round(r.cpc).toLocaleString()}${getDiff(r.cpc, r.pCpc)}</td>
+                <td>${r.cv}${getDiff(r.cv, r.pCv)}</td>
+                <td style="font-weight:bold">${r.amt.toLocaleString()}${getDiff(r.amt, r.pAmt)}</td>
+                <td style="color:green; font-weight:bold;">${r.roas.toFixed(0)}%${getDiff(r.roas, r.pRoas)}</td>
+            </tr>`).join('');
+    }
+
+    function cr_resort(k) { 
+        cr_sKey = k; 
+        cr_sDir = cr_sDir === 'desc' ? 'asc' : 'desc'; 
+        cr_refresh(); 
+    }
+
+    function cr_viewDetail(mat) {
+        cr_activeMat = mat;
+        document.getElementById('detailSection').style.display = 'block';
+        document.getElementById('detailTitle').innerText = `[전체 기간] ${cr_pMap[mat]?.name || mat}`;
+        
+        let th = '';
+        for(let k in cr_metricNames) {
+            th += `<button class="tab-btn ${cr_metric===k?'active':''}" onclick="cr_setMetric('${k}')">${cr_metricNames[k]}</button>`;
+        }
+        document.getElementById('tabArea').innerHTML = th;
+        
+        cr_drawCharts();
+        setTimeout(() => {
+            document.getElementById('detailSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }
+
+    function cr_setMetric(m) { 
+        cr_metric = m; 
+        cr_drawCharts();
+    }
+
+    function cr_drawCharts() {
+        const filteredData = cr_raw.filter(d => d.mat === cr_activeMat);
+        
+        // 일별 집계
+        const dayMap = {};
+        filteredData.forEach(d => {
+            if(!dayMap[d.date]) dayMap[d.date] = { date: d.date, cost:0, view:0, click:0, cv:0, amt:0 };
+            dayMap[d.date].cost += d.cost; 
+            dayMap[d.date].view += d.view; 
+            dayMap[d.date].click += d.click; 
+            dayMap[d.date].cv += d.cv; 
+            dayMap[d.date].amt += d.amt;
+        });
+        
+        const dData = Object.values(dayMap).sort((a,b) => a.date.localeCompare(b.date));
+        
+        // 주별 집계
+        const wMap = {};
+        filteredData.forEach(d => {
+            if(!wMap[d.week]) wMap[d.week] = { cost:0, view:0, click:0, cv:0, amt:0 };
+            wMap[d.week].cost += d.cost; 
+            wMap[d.week].view += d.view; 
+            wMap[d.week].click += d.click; 
+            wMap[d.week].cv += d.cv; 
+            wMap[d.week].amt += d.amt;
+        });
+
+        const getValue = (o) => {
+            if(cr_metric === 'ctr') return o.view > 0 ? (o.click / o.view * 100) : 0;
+            if(cr_metric === 'cvr') return o.click > 0 ? (o.cv / o.click * 100) : 0;
+            if(cr_metric === 'roas') return o.cost > 0 ? (o.amt / o.cost * 100) : 0;
+            if(cr_metric === 'cpc') return o.click > 0 ? (o.cost / o.click) : 0;
+            return o[cr_metric] || 0;
+        };
+
+        const formatValue = (val) => {
+            if(['ctr', 'cvr', 'roas'].includes(cr_metric)) return val.toFixed(1) + '%';
+            return Math.round(val).toLocaleString();
+        };
+
+        // 통계 렌더링 함수
+        const renderStats = (id, values, prefix) => {
+            if(values.length === 0) {
+                document.getElementById(id).innerHTML = '';
+                return;
+            }
+            const max = Math.max(...values);
+            const min = Math.min(...values);
+            const avg = values.reduce((a,b)=>a+b,0) / values.length;
+            
+            document.getElementById(id).innerHTML = `
+                <div class="stat-item"><div class="stat-label">${prefix} 최고</div><div class="stat-value max">${formatValue(max)}</div></div>
+                <div class="stat-item"><div class="stat-label">${prefix} 최저</div><div class="stat-value min">${formatValue(min)}</div></div>
+                <div class="stat-item"><div class="stat-label">${prefix} 평균</div><div class="stat-value">${formatValue(avg)}</div></div>
+            `;
+        };
+
+        // 일별 차트
+        if(cr_dChart) cr_dChart.destroy();
+        const dayLabels = dData.map(d => d.date);
+        const dayValues = dData.map(d => getValue(d));
+        
+        renderStats('dayStats', dayValues, '일'); // 일별 통계 표시
+
+        cr_dChart = new Chart(document.getElementById('dayChart'), {
+            type: 'line',
+            data: {
+                labels: dayLabels,
+                datasets: [{
+                    label: cr_metricNames[cr_metric],
+                    data: dayValues,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: '#3498db',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: { display: false },
+                    datalabels: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        titleFont: { size: 13 },
+                        bodyFont: { size: 14, weight: 'bold' },
+                        callbacks: {
+                            label: (context) => cr_metricNames[cr_metric] + ': ' + formatValue(context.parsed.y)
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => formatValue(value)
+                        },
+                        grid: { color: '#f0f0f0' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // 최근 4주만 필터링
+        const weekKeys = Object.keys(wMap).sort().slice(-4);
+        const weekValues = weekKeys.map(k => getValue(wMap[k]));
+        
+        renderStats('weekStats', weekValues, '주'); // 주별 통계 표시
+        
+        // 최근 주는 진한 파란색, 나머지는 연한 하늘색 파스텔톤
+        const weekColors = weekKeys.map((k, idx) => 
+            idx === weekKeys.length - 1 ? '#5DADE2' : '#D6EAF8'
+        );
+        
+        // 주별 차트
+        if(cr_wChart) cr_wChart.destroy();
+        cr_wChart = new Chart(document.getElementById('weekChart'), {
+            type: 'bar',
+            data: {
+                labels: weekKeys,
+                datasets: [{
+                    label: cr_metricNames[cr_metric],
+                    data: weekValues,
+                    backgroundColor: weekColors,
+                    borderColor: '#fff',
+                    borderWidth: 2,
+                    datalabels: {
+                        anchor: 'center',
+                        align: 'center',
+                        color: '#2c3e50',
+                        font: { weight: 'bold', size: 13 },
+                        formatter: (value) => formatValue(value)
+                    }
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        titleFont: { size: 13 },
+                        bodyFont: { size: 14, weight: 'bold' },
+                        callbacks: {
+                            label: (context) => cr_metricNames[cr_metric] + ': ' + formatValue(context.parsed.y)
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => formatValue(value)
+                        },
+                        grid: { color: '#f0f0f0' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
   </script>
 </body>
 </html>
