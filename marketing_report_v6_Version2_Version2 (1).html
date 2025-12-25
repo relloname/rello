@@ -4,8 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Marketing Report v6</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 16px; }
+    :root { --naver-green: #00c73c; --border: #ddd; --up: #ff4d4d; --down: #3182ce; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 16px; background-color: #f8f9fa; }
     .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
     .control { display: flex; flex-direction: column; gap: 6px; }
     label { font-size: 12px; color: #444; }
@@ -20,12 +24,108 @@
     .card { border: 1px solid #e5e5e5; border-radius: 8px; padding: 12px; min-width: 220px; }
     .card h3 { margin: 0 0 8px 0; font-size: 14px; }
     .kpi { font-size: 22px; font-weight: 700; }
+    
+    /* Tab Navigation */
+    .tab-navigation { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e5e5e5; padding-bottom: 8px; }
+    .tab { padding: 10px 20px; border: 1px solid #e5e5e5; border-radius: 8px 8px 0 0; background: #f9f9f9; cursor: pointer; font-weight: 500; transition: 0.2s; }
+    .tab:hover { background: #f0f0f0; }
+    .tab.active { background: white; border-bottom: 2px solid white; margin-bottom: -2px; color: var(--naver-green); font-weight: bold; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    /* Data Upload Section */
+    #uploadSection { display: flex; flex-direction: column; gap: 20px; padding: 25px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .upload-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+    .file-input-group { display: flex; flex-direction: column; font-size: 12px; font-weight: bold; gap: 8px; padding: 15px; border: 2px dashed #ddd; border-radius: 8px; transition: 0.2s; }
+    .file-input-group:hover { border-color: var(--naver-green); background: #f9f9f9; }
+    .file-input-group.dragover { border-color: var(--naver-green); background: #f0fff4; }
+    .file-input-group input[type="file"] { font-size: 11px; }
+    .upload-button { background: var(--naver-green); color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; align-self: flex-start; }
+    .upload-button:hover { background: #00b136; }
+    .upload-button:disabled { background: #ccc; cursor: not-allowed; }
+    
+    /* 소재 Analysis Specific Styles */
+    .filter-section { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid #eee; align-items: center; }
+    .filter-card { min-width: 120px; padding: 10px 15px; background: white; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s; flex-shrink: 0; font-size: 13px; }
+    .filter-card.active { border: 2px solid var(--naver-green); background: #f0fff4; font-weight: bold; }
+    .filter-card:hover { background: #f9f9f9; }
+    .reset-btn { padding: 8px 18px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; flex-shrink: 0; }
+    .reset-btn:hover { background: #c0392b; }
+    
+    .table-wrapper { overflow-x: auto; max-height: 500px; border: 1px solid #eee; border-radius: 8px; background: white; }
+    .table-wrapper table { min-width: 1800px; }
+    .table-wrapper th { background: #f1f3f4; padding: 12px; font-size: 12px; cursor: pointer; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #ddd; white-space: nowrap; }
+    .table-wrapper td { border-bottom: 1px solid #eee; padding: 10px; text-align: center; font-size: 13px; line-height: 1.4; white-space: nowrap; }
+    .col-campaign, .col-adgroup { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .col-product { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+    
+    .diff { font-size: 10px; color: #888; }
+    .up { color: var(--up); } .down { color: var(--down); }
+    
+    #detailSection { margin-top: 30px; padding: 25px; border: 1px solid var(--border); border-radius: 12px; display: none; background: #fff; }
+    .tab-area { display: flex; gap: 8px; margin-top: 25px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-btn { padding: 8px 16px; border: 1px solid var(--border); border-radius: 20px; background: #fff; cursor: pointer; font-size: 12px; transition: 0.2s; }
+    .tab-btn.active { background: var(--naver-green); color: white; border-color: var(--naver-green); }
+    .tab-btn:hover { background: #f0f0f0; }
+    
+    .chart-grid { display: flex; flex-direction: column; gap: 20px; }
+    .chart-container { border: 1px solid #f0f0f0; padding: 15px; border-radius: 8px; background: #fafafa; position: relative; }
+    .chart-box { height: 350px; margin-bottom: 15px; background: white; padding: 10px; border-radius: 6px; }
+    
+    .stats-row { display: flex; gap: 15px; margin-bottom: 15px; background: white; padding: 10px; border-radius: 8px; border: 1px solid #eee; justify-content: space-around; }
+    .stat-item { text-align: center; flex: 1; border-right: 1px solid #eee; }
+    .stat-item:last-child { border-right: none; }
+    .stat-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+    .stat-value { font-size: 14px; font-weight: bold; color: #2c3e50; }
+    .stat-value.max { color: var(--up); }
+    .stat-value.min { color: var(--down); }
+    
+    canvas { width: 100% !important; height: 100% !important; }
+    
+    .img-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
+    .badge-group { background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; }
   </style>
 </head>
 <body>
   <h1>Marketing Report <span class="pill">v6</span></h1>
-  <p class="muted">Interactive HTML report. Use filters below to slice the data.</p>
+  <p class="muted">Interactive HTML report with multi-page analysis. Upload data files or use sample data.</p>
+  
+  <!-- Data Upload Section -->
+  <div id="uploadSection">
+    <h3>📤 Data Upload</h3>
+    <div class="upload-grid">
+      <div class="file-input-group" data-file-type="tsv">
+        <label>1. 상품 정보 (TSV)</label>
+        <input type="file" id="tsvFile" accept=".tsv">
+        <small class="muted">소재.tsv 형식</small>
+      </div>
+      <div class="file-input-group" data-file-type="campaign">
+        <label>2. 캠페인 보고서 (CSV)</label>
+        <input type="file" id="campaignFile" accept=".csv">
+        <small class="muted">캠페인 보고서,mode_27_naver (24).csv 형식</small>
+      </div>
+      <div class="file-input-group" data-file-type="raw1">
+        <label>3. RAW 데이터 1 (CSV)</label>
+        <input type="file" id="raw1File" accept=".csv">
+        <small class="muted">RAW.csv 형식</small>
+      </div>
+      <div class="file-input-group" data-file-type="raw2">
+        <label>4. RAW 데이터 2 (CSV)</label>
+        <input type="file" id="raw2File" accept=".csv">
+        <small class="muted">RAW2.csv 형식</small>
+      </div>
+    </div>
+    <button class="upload-button" id="uploadButton">📊 데이터 분석 실행</button>
+  </div>
+  
+  <!-- Tab Navigation -->
+  <div class="tab-navigation">
+    <div class="tab active" data-tab="campaign">Campaign Analysis</div>
+    <div class="tab" data-tab="shopping">쇼핑 상품 분석</div>
+  </div>
 
+  <!-- Campaign Analysis Tab Content -->
+  <div id="campaignTab" class="tab-content active">
   <div class="controls" id="controls">
     <div class="control">
       <label for="dateFrom">Date from</label>
@@ -80,6 +180,67 @@
     </thead>
     <tbody id="tbody"></tbody>
   </table>
+  </div>
+  
+  <!-- 쇼핑 상품 분석 Tab Content -->
+  <div id="shoppingTab" class="tab-content">
+    <div id="shoppingResultArea" style="display:none;">
+      <div id="cpCards" class="filter-section"></div>
+      <div id="grCards" class="filter-section"></div>
+      
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>이미지</th>
+              <th data-sort="cp" class="col-campaign sortable">캠페인</th>
+              <th data-sort="gr" class="col-adgroup sortable">광고그룹</th>
+              <th class="col-product">상품명</th>
+              <th data-sort="cost" class="sortable">광고비</th>
+              <th data-sort="view" class="sortable">노출수</th>
+              <th data-sort="click" class="sortable">클릭수</th>
+              <th data-sort="ctr" class="sortable">클릭율</th>
+              <th data-sort="cpc" class="sortable">CPC</th>
+              <th data-sort="cv" class="sortable">전환수</th>
+              <th data-sort="amt" class="sortable">매출액</th>
+              <th data-sort="roas" class="sortable">ROAS</th>
+            </tr>
+          </thead>
+          <tbody id="shoppingTableBody"></tbody>
+        </table>
+      </div>
+
+      <div id="detailSection">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 id="detailTitle" style="margin:0;"></h3>
+          <button id="closeDetailBtn" style="color:red; border:none; background:none; cursor:pointer; font-weight:bold; font-size: 16px;">[✕ 닫기]</button>
+        </div>
+        <div class="tab-area" id="tabArea"></div>
+        <div class="chart-grid">
+          <div class="chart-container">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <h5 style="margin:0;">📅 일별 추이</h5>
+            </div>
+            <div id="dayStats" class="stats-row"></div>
+            <div class="chart-box"><canvas id="dayChart"></canvas></div>
+          </div>
+          <div class="chart-container">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <h5 style="margin:0;">📊 주별 추이 (최근 4주)</h5>
+            </div>
+            <div id="weekStats" class="stats-row"></div>
+            <div class="chart-box"><canvas id="weekChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="shoppingPlaceholder" style="padding: 40px; text-align: center; color: #666;">
+      <h3>🛍️ 쇼핑 상품 분석</h3>
+      <p>데이터를 업로드하면 쇼핑 상품 분석 결과가 표시됩니다.</p>
+      <p class="muted">필요한 파일: 상품 정보 (TSV), 캠페인 보고서 (CSV)</p>
+    </div>
+  </div>
 
   <script>
     // ----- Data (example / placeholder) -----
@@ -94,6 +255,12 @@
     // ----- Helpers -----
     const $ = (id) => document.getElementById(id);
     const fmtMoney = (n) => (Number(n || 0)).toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
 
     function uniq(arr) {
       return Array.from(new Set(arr)).sort((a, b) => String(a).localeCompare(String(b)));
@@ -225,12 +392,555 @@
 
       $('applyBtn').addEventListener('click', render);
       $('resetBtn').addEventListener('click', resetState);
+      
+      // Add event listeners for tab navigation
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+          const tabName = this.getAttribute('data-tab');
+          switchTab(tabName, this);
+        });
+      });
+      
+      // Add event listener for upload button
+      $('uploadButton').addEventListener('click', loadUploadedData);
+      
+      // Add event listener for close detail button
+      $('closeDetailBtn').addEventListener('click', () => {
+        $('detailSection').style.display = 'none';
+      });
+      
+      // Add event listeners for shopping table sorting headers
+      document.querySelectorAll('#shoppingTab .sortable').forEach(th => {
+        th.addEventListener('click', () => {
+          const sortKey = th.getAttribute('data-sort');
+          shoppingResort(sortKey);
+        });
+      });
 
       // Initial render
       render();
     }
 
     init();
+    
+    // ===== Tab Switching =====
+    function switchTab(tabName, clickedElement) {
+      // Update tab buttons
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      if (clickedElement) {
+        clickedElement.classList.add('active');
+      } else {
+        // Find and activate the corresponding tab button
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(t => {
+          if ((tabName === 'campaign' && t.textContent.includes('Campaign Analysis')) ||
+              (tabName === 'shopping' && t.textContent.includes('쇼핑 상품 분석'))) {
+            t.classList.add('active');
+          }
+        });
+      }
+      
+      // Update tab content
+      document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+      if (tabName === 'campaign') {
+        $('campaignTab').classList.add('active');
+      } else if (tabName === 'shopping') {
+        $('shoppingTab').classList.add('active');
+      }
+    }
+    
+    // ===== File Upload with Drag & Drop =====
+    function setupDragAndDrop() {
+      const fileGroups = document.querySelectorAll('.file-input-group');
+      
+      fileGroups.forEach(group => {
+        const fileInput = group.querySelector('input[type="file"]');
+        
+        group.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          group.classList.add('dragover');
+        });
+        
+        group.addEventListener('dragleave', () => {
+          group.classList.remove('dragover');
+        });
+        
+        group.addEventListener('drop', (e) => {
+          e.preventDefault();
+          group.classList.remove('dragover');
+          
+          const files = e.dataTransfer.files;
+          if (files.length > 0) {
+            fileInput.files = files;
+          }
+        });
+      });
+    }
+    
+    setupDragAndDrop();
+    
+    // ===== Shopping Analysis (from 소재.html) =====
+    let raw = [], pMap = {}, aggList = [];
+    let dChart = null, wChart = null;
+    let metric = 'amt';
+    let sKey = 'cv', sDir = 'desc', activeMat = null;
+    let filterCp = null, filterGr = null;
+    
+    const metricNames = { 
+      amt:'매출액', 
+      cost:'광고비', 
+      view:'노출수', 
+      click:'클릭수', 
+      cv:'전환수', 
+      ctr:'클릭율(%)', 
+      cvr:'전환율(%)', 
+      roas:'ROAS(%)',
+      cpc:'CPC'
+    };
+    
+    function loadUploadedData() {
+      const tsv = $('tsvFile').files[0];
+      const csv = $('campaignFile').files[0];
+      
+      if (!tsv || !csv) {
+        alert("쇼핑 상품 분석을 위해서는 상품 정보 (TSV)와 캠페인 보고서 (CSV) 파일을 업로드해주세요.");
+        return;
+      }
+      
+      // Parse TSV product info
+      Papa.parse(tsv, { 
+        delimiter: "\t", 
+        complete: (t) => {
+          t.data.forEach(r => { 
+            if (r[2]) pMap[r[2].trim()] = { name: r[14], img: r[15] }; 
+          });
+          
+          // Parse campaign CSV
+          Papa.parse(csv, { 
+            encoding: "EUC-KR", 
+            skipEmptyLines: true, 
+            complete: (c) => {
+              const headRow = c.data.findIndex(r => r.join(',').includes("캠페인유형"));
+              raw = c.data.slice(headRow + 1)
+                .filter(r => r[0] === "쇼핑검색")
+                .map(r => ({
+                  cp: r[1], 
+                  gr: r[2], 
+                  mat: r[3].trim(), 
+                  date: r[6], 
+                  week: r[7],
+                  cost: Number(r[8]||0), 
+                  view: Number(r[9]||0), 
+                  click: Number(r[10]||0), 
+                  cv: Number(r[11]||0), 
+                  amt: Number(r[12]||0)
+                }));
+              
+              $('uploadSection').style.display = 'none';
+              $('shoppingPlaceholder').style.display = 'none';
+              $('shoppingResultArea').style.display = 'block';
+              
+              // Switch to shopping tab
+              switchTab('shopping');
+              
+              resetFilters();
+            }
+          });
+        }
+      });
+    }
+    
+    function resetFilters() {
+      filterCp = null;
+      filterGr = null;
+      renderFilters();
+      shoppingRefresh();
+    }
+    
+    function setCP(c) { 
+      filterCp = c; 
+      filterGr = null; 
+      renderFilters(); 
+      shoppingRefresh(); 
+    }
+    
+    function setGR(g) { 
+      filterGr = g; 
+      renderFilters(); 
+      shoppingRefresh(); 
+    }
+    
+    function renderFilters() {
+      const cps = [...new Set(raw.map(d => d.cp))];
+      let h = `<button class="reset-btn" id="shoppingResetBtn">🔄 초기화</button>`;
+      h += `<div class="filter-card ${!filterCp?'active':''}" data-campaign="">전체 캠페인</div>`;
+      cps.forEach(c => {
+        const escaped = escapeHtml(c);
+        h += `<div class="filter-card ${filterCp===c?'active':''}" data-campaign="${escaped}">${escaped}</div>`;
+      });
+      $('cpCards').innerHTML = h;
+      
+      // Add event listener for reset button
+      const resetBtn = $('shoppingResetBtn');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', resetFilters);
+      }
+      
+      // Add event listeners
+      $('cpCards').querySelectorAll('.filter-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const campaign = card.getAttribute('data-campaign');
+          setCP(campaign || null);
+        });
+      });
+      
+      if (filterCp) {
+        const grs = [...new Set(raw.filter(d => d.cp === filterCp).map(d => d.gr))];
+        let gh = `<div class="filter-card ${!filterGr?'active':''}" data-adgroup="">전체 광고그룹</div>`;
+        grs.forEach(g => {
+          const escaped = escapeHtml(g);
+          gh += `<div class="filter-card ${filterGr===g?'active':''}" data-adgroup="${escaped}">${escaped}</div>`;
+        });
+        $('grCards').innerHTML = gh;
+        
+        // Add event listeners
+        $('grCards').querySelectorAll('.filter-card').forEach(card => {
+          card.addEventListener('click', () => {
+            const adgroup = card.getAttribute('data-adgroup');
+            setGR(adgroup || null);
+          });
+        });
+      } else {
+        $('grCards').innerHTML = '';
+      }
+    }
+    
+    function shoppingRefresh() {
+      const allDates = [...new Set(raw.map(d=>d.date))].sort().reverse();
+      const curDates = allDates.slice(0, 7);
+      const preDates = allDates.slice(7, 14);
+      
+      let filtered = raw.filter(d => 
+        (!filterCp || d.cp === filterCp) &&
+        (!filterGr || d.gr === filterGr)
+      );
+      
+      const agg = {};
+      const gCheck = {};
+      
+      filtered.forEach(r => {
+        const pName = pMap[r.mat]?.name || "알수없음";
+        const gk = `${r.cp}_${r.gr}_${pName}`;
+        if (!gCheck[gk]) gCheck[gk] = new Set(); 
+        gCheck[gk].add(r.mat);
+        
+        if (!agg[r.mat]) {
+          agg[r.mat] = { 
+            cp: r.cp, gr: r.gr, mat: r.mat,
+            cost:0, view:0, click:0, cv:0, amt:0, 
+            pCost:0, pView:0, pClick:0, pCv:0, pAmt:0 
+          };
+        }
+        
+        if (curDates.includes(r.date)) { 
+          agg[r.mat].cost += r.cost; 
+          agg[r.mat].view += r.view; 
+          agg[r.mat].click += r.click; 
+          agg[r.mat].cv += r.cv; 
+          agg[r.mat].amt += r.amt; 
+        }
+        if (preDates.includes(r.date)) { 
+          agg[r.mat].pCost += r.cost; 
+          agg[r.mat].pView += r.view; 
+          agg[r.mat].pClick += r.click; 
+          agg[r.mat].pCv += r.cv; 
+          agg[r.mat].pAmt += r.amt; 
+        }
+      });
+      
+      aggList = Object.values(agg).map(r => {
+        const pName = pMap[r.mat]?.name || "매칭실패";
+        return {
+          ...r, 
+          pName: pName,
+          pImg: pMap[r.mat]?.img || "",
+          isG: gCheck[`${r.cp}_${r.gr}_${pName}`]?.size > 1,
+          ctr: r.view > 0 ? (r.click / r.view * 100) : 0, 
+          cpc: r.click > 0 ? (r.cost / r.click) : 0, 
+          roas: r.cost > 0 ? (r.amt / r.cost * 100) : 0,
+          pCtr: r.pView > 0 ? (r.pClick / r.pView * 100) : 0,
+          pCpc: r.pClick > 0 ? (r.pCost / r.pClick) : 0,
+          pRoas: r.pCost > 0 ? (r.pAmt / r.pCost * 100) : 0
+        };
+      });
+      
+      aggList.sort((a,b) => {
+        if (sDir === 'desc') {
+          return b[sKey] > a[sKey] ? 1 : -1;
+        } else {
+          return a[sKey] > b[sKey] ? 1 : -1;
+        }
+      });
+      
+      const getDiff = (cur, pre) => {
+        if (pre === 0 || pre === null || pre === undefined) return '';
+        const d = ((cur - pre) / pre * 100).toFixed(0);
+        if (Math.abs(d) < 0.5) return '';
+        if (d > 0) return `<span class="diff up">(▲${d}%)</span>`;
+        if (d < 0) return `<span class="diff down">(▼${Math.abs(d)}%)</span>`;
+        return '';
+      };
+      
+      $('shoppingTableBody').innerHTML = aggList.map((r, idx) => `
+        <tr data-mat-index="${idx}" style="cursor:pointer;">
+          <td><img src="${escapeHtml(r.pImg)}" class="img-thumb" data-fallback="true"></td>
+          <td class="col-campaign" style="color:#2b6cb0;" title="${escapeHtml(r.cp)}">${escapeHtml(r.cp)}</td>
+          <td class="col-adgroup" style="color:#c05621;" title="${escapeHtml(r.gr)}">${escapeHtml(r.gr)}</td>
+          <td class="col-product" title="${escapeHtml(r.pName)}"><b>${escapeHtml(r.pName)}</b>${r.isG?'<span class="badge-group">그룹</span>':''}</td>
+          <td>${r.cost.toLocaleString()}${getDiff(r.cost, r.pCost)}</td>
+          <td>${r.view.toLocaleString()}${getDiff(r.view, r.pView)}</td>
+          <td>${r.click.toLocaleString()}${getDiff(r.click, r.pClick)}</td>
+          <td>${r.ctr.toFixed(2)}%${getDiff(r.ctr, r.pCtr)}</td>
+          <td>${Math.round(r.cpc).toLocaleString()}${getDiff(r.cpc, r.pCpc)}</td>
+          <td>${r.cv}${getDiff(r.cv, r.pCv)}</td>
+          <td style="font-weight:bold">${r.amt.toLocaleString()}${getDiff(r.amt, r.pAmt)}</td>
+          <td style="color:green; font-weight:bold;">${r.roas.toFixed(0)}%${getDiff(r.roas, r.pRoas)}</td>
+        </tr>`).join('');
+      
+      // Add event listeners to table rows
+      $('shoppingTableBody').querySelectorAll('tr').forEach(row => {
+        row.addEventListener('click', () => {
+          const idx = parseInt(row.getAttribute('data-mat-index'));
+          viewDetail(aggList[idx].mat);
+        });
+      });
+      
+      // Add error handlers for product images
+      $('shoppingTableBody').querySelectorAll('img.img-thumb').forEach(img => {
+        img.addEventListener('error', function() {
+          this.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E';
+        });
+      });
+    }
+    
+    function shoppingResort(k) { 
+      sKey = k; 
+      sDir = sDir === 'desc' ? 'asc' : 'desc'; 
+      shoppingRefresh(); 
+    }
+    
+    function viewDetail(mat) {
+      activeMat = mat;
+      $('detailSection').style.display = 'block';
+      $('detailTitle').innerText = `[전체 기간] ${pMap[mat]?.name || mat}`;
+      
+      let th = '';
+      for (let k in metricNames) {
+        th += `<button class="tab-btn ${metric===k?'active':''}" data-metric="${k}">${metricNames[k]}</button>`;
+      }
+      $('tabArea').innerHTML = th;
+      
+      // Add event listeners to metric tabs
+      $('tabArea').querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setMetric(btn.getAttribute('data-metric'));
+        });
+      });
+      
+      drawCharts();
+      setTimeout(() => {
+        $('detailSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+    
+    function setMetric(m) { 
+      metric = m; 
+      drawCharts();
+    }
+    
+    function drawCharts() {
+      const filteredData = raw.filter(d => d.mat === activeMat);
+      
+      // 일별 집계
+      const dayMap = {};
+      filteredData.forEach(d => {
+        if (!dayMap[d.date]) dayMap[d.date] = { date: d.date, cost:0, view:0, click:0, cv:0, amt:0 };
+        dayMap[d.date].cost += d.cost; 
+        dayMap[d.date].view += d.view; 
+        dayMap[d.date].click += d.click; 
+        dayMap[d.date].cv += d.cv; 
+        dayMap[d.date].amt += d.amt;
+      });
+      
+      const dData = Object.values(dayMap).sort((a,b) => a.date.localeCompare(b.date));
+      
+      // 주별 집계
+      const wMap = {};
+      filteredData.forEach(d => {
+        if (!wMap[d.week]) wMap[d.week] = { cost:0, view:0, click:0, cv:0, amt:0 };
+        wMap[d.week].cost += d.cost; 
+        wMap[d.week].view += d.view; 
+        wMap[d.week].click += d.click; 
+        wMap[d.week].cv += d.cv; 
+        wMap[d.week].amt += d.amt;
+      });
+      
+      const getValue = (o) => {
+        if (metric === 'ctr') return o.view > 0 ? (o.click / o.view * 100) : 0;
+        if (metric === 'cvr') return o.click > 0 ? (o.cv / o.click * 100) : 0;
+        if (metric === 'roas') return o.cost > 0 ? (o.amt / o.cost * 100) : 0;
+        if (metric === 'cpc') return o.click > 0 ? (o.cost / o.click) : 0;
+        return o[metric] || 0;
+      };
+      
+      const formatValue = (val) => {
+        if (['ctr', 'cvr', 'roas'].includes(metric)) return val.toFixed(1) + '%';
+        return Math.round(val).toLocaleString();
+      };
+      
+      // 통계 렌더링 함수
+      const renderStats = (id, values, prefix) => {
+        if (values.length === 0) {
+          $(id).innerHTML = '';
+          return;
+        }
+        const max = Math.max(...values);
+        const min = Math.min(...values);
+        const avg = values.reduce((a,b)=>a+b,0) / values.length;
+        
+        $(id).innerHTML = `
+          <div class="stat-item"><div class="stat-label">${prefix} 최고</div><div class="stat-value max">${formatValue(max)}</div></div>
+          <div class="stat-item"><div class="stat-label">${prefix} 최저</div><div class="stat-value min">${formatValue(min)}</div></div>
+          <div class="stat-item"><div class="stat-label">${prefix} 평균</div><div class="stat-value">${formatValue(avg)}</div></div>
+        `;
+      };
+      
+      // 일별 차트
+      if (dChart) dChart.destroy();
+      const dayLabels = dData.map(d => d.date);
+      const dayValues = dData.map(d => getValue(d));
+      
+      renderStats('dayStats', dayValues, '일');
+      
+      dChart = new Chart($('dayChart'), {
+        type: 'line',
+        data: {
+          labels: dayLabels,
+          datasets: [{
+            label: metricNames[metric],
+            data: dayValues,
+            borderColor: '#3498db',
+            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            tension: 0.4,
+            fill: true,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#3498db',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              padding: 12,
+              titleFont: { size: 13 },
+              bodyFont: { size: 14, weight: 'bold' },
+              callbacks: {
+                label: (context) => metricNames[metric] + ': ' + formatValue(context.parsed.y)
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (value) => formatValue(value)
+              },
+              grid: { color: '#f0f0f0' }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+      
+      // 최근 4주만 필터링
+      const weekKeys = Object.keys(wMap).sort().slice(-4);
+      const weekValues = weekKeys.map(k => getValue(wMap[k]));
+      
+      renderStats('weekStats', weekValues, '주');
+      
+      const weekColors = weekKeys.map((k, idx) => 
+        idx === weekKeys.length - 1 ? '#5DADE2' : '#D6EAF8'
+      );
+      
+      // 주별 차트
+      if (wChart) wChart.destroy();
+      wChart = new Chart($('weekChart'), {
+        type: 'bar',
+        data: {
+          labels: weekKeys,
+          datasets: [{
+            label: metricNames[metric],
+            data: weekValues,
+            backgroundColor: weekColors,
+            borderColor: '#fff',
+            borderWidth: 2,
+            datalabels: {
+              anchor: 'center',
+              align: 'center',
+              color: '#2c3e50',
+              font: { weight: 'bold', size: 13 },
+              formatter: (value) => formatValue(value)
+            }
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              padding: 12,
+              titleFont: { size: 13 },
+              bodyFont: { size: 14, weight: 'bold' },
+              callbacks: {
+                label: (context) => metricNames[metric] + ': ' + formatValue(context.parsed.y)
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (value) => formatValue(value)
+              },
+              grid: { color: '#f0f0f0' }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
   </script>
 </body>
 </html>
