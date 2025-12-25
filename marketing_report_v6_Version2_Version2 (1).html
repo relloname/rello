@@ -115,13 +115,13 @@
         <small class="muted">RAW2.csv 형식</small>
       </div>
     </div>
-    <button class="upload-button" onclick="loadUploadedData()">📊 데이터 분석 실행</button>
+    <button class="upload-button" id="uploadButton">📊 데이터 분석 실행</button>
   </div>
   
   <!-- Tab Navigation -->
   <div class="tab-navigation">
-    <div class="tab active" onclick="switchTab('campaign', this)">Campaign Analysis</div>
-    <div class="tab" onclick="switchTab('shopping', this)">쇼핑 상품 분석</div>
+    <div class="tab active" data-tab="campaign">Campaign Analysis</div>
+    <div class="tab" data-tab="shopping">쇼핑 상품 분석</div>
   </div>
 
   <!-- Campaign Analysis Tab Content -->
@@ -193,17 +193,17 @@
           <thead>
             <tr>
               <th>이미지</th>
-              <th onclick="shoppingResort('cp')" class="col-campaign">캠페인</th>
-              <th onclick="shoppingResort('gr')" class="col-adgroup">광고그룹</th>
+              <th data-sort="cp" class="col-campaign sortable">캠페인</th>
+              <th data-sort="gr" class="col-adgroup sortable">광고그룹</th>
               <th class="col-product">상품명</th>
-              <th onclick="shoppingResort('cost')">광고비</th>
-              <th onclick="shoppingResort('view')">노출수</th>
-              <th onclick="shoppingResort('click')">클릭수</th>
-              <th onclick="shoppingResort('ctr')">클릭율</th>
-              <th onclick="shoppingResort('cpc')">CPC</th>
-              <th onclick="shoppingResort('cv')">전환수</th>
-              <th onclick="shoppingResort('amt')">매출액</th>
-              <th onclick="shoppingResort('roas')">ROAS</th>
+              <th data-sort="cost" class="sortable">광고비</th>
+              <th data-sort="view" class="sortable">노출수</th>
+              <th data-sort="click" class="sortable">클릭수</th>
+              <th data-sort="ctr" class="sortable">클릭율</th>
+              <th data-sort="cpc" class="sortable">CPC</th>
+              <th data-sort="cv" class="sortable">전환수</th>
+              <th data-sort="amt" class="sortable">매출액</th>
+              <th data-sort="roas" class="sortable">ROAS</th>
             </tr>
           </thead>
           <tbody id="shoppingTableBody"></tbody>
@@ -213,7 +213,7 @@
       <div id="detailSection">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h3 id="detailTitle" style="margin:0;"></h3>
-          <button onclick="document.getElementById('detailSection').style.display='none'" style="color:red; border:none; background:none; cursor:pointer; font-weight:bold; font-size: 16px;">[✕ 닫기]</button>
+          <button id="closeDetailBtn" style="color:red; border:none; background:none; cursor:pointer; font-weight:bold; font-size: 16px;">[✕ 닫기]</button>
         </div>
         <div class="tab-area" id="tabArea"></div>
         <div class="chart-grid">
@@ -392,6 +392,30 @@
 
       $('applyBtn').addEventListener('click', render);
       $('resetBtn').addEventListener('click', resetState);
+      
+      // Add event listeners for tab navigation
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+          const tabName = this.getAttribute('data-tab');
+          switchTab(tabName, this);
+        });
+      });
+      
+      // Add event listener for upload button
+      $('uploadButton').addEventListener('click', loadUploadedData);
+      
+      // Add event listener for close detail button
+      $('closeDetailBtn').addEventListener('click', () => {
+        $('detailSection').style.display = 'none';
+      });
+      
+      // Add event listeners for shopping table sorting headers
+      document.querySelectorAll('#shoppingTab .sortable').forEach(th => {
+        th.addEventListener('click', () => {
+          const sortKey = th.getAttribute('data-sort');
+          shoppingResort(sortKey);
+        });
+      });
 
       // Initial render
       render();
@@ -548,13 +572,19 @@
     
     function renderFilters() {
       const cps = [...new Set(raw.map(d => d.cp))];
-      let h = `<button class="reset-btn" onclick="resetFilters()">🔄 초기화</button>`;
+      let h = `<button class="reset-btn" id="shoppingResetBtn">🔄 초기화</button>`;
       h += `<div class="filter-card ${!filterCp?'active':''}" data-campaign="">전체 캠페인</div>`;
       cps.forEach(c => {
         const escaped = escapeHtml(c);
         h += `<div class="filter-card ${filterCp===c?'active':''}" data-campaign="${escaped}">${escaped}</div>`;
       });
       $('cpCards').innerHTML = h;
+      
+      // Add event listener for reset button
+      const resetBtn = $('shoppingResetBtn');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', resetFilters);
+      }
       
       // Add event listeners
       $('cpCards').querySelectorAll('.filter-card').forEach(card => {
@@ -699,9 +729,16 @@
       
       let th = '';
       for (let k in metricNames) {
-        th += `<button class="tab-btn ${metric===k?'active':''}" onclick="setMetric('${k}')">${metricNames[k]}</button>`;
+        th += `<button class="tab-btn ${metric===k?'active':''}" data-metric="${k}">${metricNames[k]}</button>`;
       }
       $('tabArea').innerHTML = th;
+      
+      // Add event listeners to metric tabs
+      $('tabArea').querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setMetric(btn.getAttribute('data-metric'));
+        });
+      });
       
       drawCharts();
       setTimeout(() => {
