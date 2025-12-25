@@ -693,7 +693,7 @@
       
       $('shoppingTableBody').innerHTML = aggList.map((r, idx) => `
         <tr data-mat-index="${idx}" style="cursor:pointer;">
-          <td><img src="${escapeHtml(r.pImg)}" class="img-thumb" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
+          <td><img src="${escapeHtml(r.pImg)}" class="img-thumb" data-fallback="true"></td>
           <td class="col-campaign" style="color:#2b6cb0;" title="${escapeHtml(r.cp)}">${escapeHtml(r.cp)}</td>
           <td class="col-adgroup" style="color:#c05621;" title="${escapeHtml(r.gr)}">${escapeHtml(r.gr)}</td>
           <td class="col-product" title="${escapeHtml(r.pName)}"><b>${escapeHtml(r.pName)}</b>${r.isG?'<span class="badge-group">그룹</span>':''}</td>
@@ -712,6 +712,13 @@
         row.addEventListener('click', () => {
           const idx = parseInt(row.getAttribute('data-mat-index'));
           viewDetail(aggList[idx].mat);
+        });
+      });
+      
+      // Add error handlers for product images
+      $('shoppingTableBody').querySelectorAll('img.img-thumb').forEach(img => {
+        img.addEventListener('error', function() {
+          this.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E';
         });
       });
     }
