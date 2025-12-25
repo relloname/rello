@@ -288,6 +288,13 @@
       cpc:'CPC'
     };
 
+    // Utility function to escape HTML to prevent XSS
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
     // ===== Tab Switching =====
     function switchTab(tabName) {
       // Hide all tabs
@@ -357,19 +364,29 @@
       files.forEach(file => {
         const name = file.name.toLowerCase();
         if (name.includes('캠페인') || (name.includes('campaign') && name.endsWith('.csv'))) {
-          document.getElementById('campaignReportFile').files = createFileList([file]);
-          handleFileSelect({ files: [file] }, 'campaign');
+          uploadedFiles.campaign = file;
+          document.getElementById('campaignStatus').textContent = '✓ ' + file.name;
+          document.getElementById('campaignStatus').classList.add('success');
         } else if (name.includes('raw2') || name === 'raw2.csv') {
-          document.getElementById('dailyReport2File').files = createFileList([file]);
-          handleFileSelect({ files: [file] }, 'daily2');
+          uploadedFiles.daily2 = file;
+          document.getElementById('daily2Status').textContent = '✓ ' + file.name;
+          document.getElementById('daily2Status').classList.add('success');
         } else if (name.includes('raw') && name.endsWith('.csv')) {
-          document.getElementById('dailyReport1File').files = createFileList([file]);
-          handleFileSelect({ files: [file] }, 'daily1');
+          uploadedFiles.daily1 = file;
+          document.getElementById('daily1Status').textContent = '✓ ' + file.name;
+          document.getElementById('daily1Status').classList.add('success');
         } else if (name.endsWith('.tsv')) {
-          document.getElementById('productInfoFile').files = createFileList([file]);
-          handleFileSelect({ files: [file] }, 'product');
+          uploadedFiles.product = file;
+          document.getElementById('productStatus').textContent = '✓ ' + file.name;
+          document.getElementById('productStatus').classList.add('success');
         }
       });
+      
+      // Enable analyze button if all required files are uploaded
+      const analyzeBtn = document.getElementById('analyzeBtn');
+      if (uploadedFiles.campaign && uploadedFiles.product && uploadedFiles.daily1 && uploadedFiles.daily2) {
+        analyzeBtn.disabled = false;
+      }
     });
 
     function createFileList(files) {
@@ -395,7 +412,6 @@
           
           // Then parse Campaign CSV file
           Papa.parse(uploadedFiles.campaign, { 
-            encoding: "EUC-KR", 
             skipEmptyLines: true, 
             complete: (csvResult) => {
               const headRow = csvResult.data.findIndex(r => r.join(',').includes("캠페인유형"));
@@ -460,13 +476,21 @@
       const cps = [...new Set(raw.map(d => d.cp))];
       let h = `<button class="reset-btn" onclick="resetFilters()">🔄 초기화</button>`;
       h += `<div class="shopping-card ${!filterCp?'active':''}" onclick="setCP(null)">전체 캠페인</div>`;
-      cps.forEach(c => h += `<div class="shopping-card ${filterCp===c?'active':''}" onclick="setCP('${c}')">${c}</div>`);
+      cps.forEach(c => {
+        const escaped = escapeHtml(c);
+        const safeC = c.replace(/'/g, "\\'");
+        h += `<div class="shopping-card ${filterCp===c?'active':''}" onclick="setCP('${safeC}')">${escaped}</div>`;
+      });
       document.getElementById('cpCards').innerHTML = h;
 
       if(filterCp) {
         const grs = [...new Set(raw.filter(d => d.cp === filterCp).map(d => d.gr))];
         let gh = `<div class="shopping-card ${!filterGr?'active':''}" onclick="setGR(null)">전체 광고그룹</div>`;
-        grs.forEach(g => gh += `<div class="shopping-card ${filterGr===g?'active':''}" onclick="setGR('${g}')">${g}</div>`);
+        grs.forEach(g => {
+          const escaped = escapeHtml(g);
+          const safeG = g.replace(/'/g, "\\'");
+          gh += `<div class="shopping-card ${filterGr===g?'active':''}" onclick="setGR('${safeG}')">${escaped}</div>`;
+        });
         document.getElementById('grCards').innerHTML = gh;
       } else {
         document.getElementById('grCards').innerHTML = '';
@@ -549,12 +573,17 @@
         return '';
       };
 
-      document.getElementById('tableBody').innerHTML = aggList.map(r => `
-        <tr onclick="viewDetail('${r.mat}')" style="cursor:pointer;">
-          <td><img src="${r.pImg}" class="img-thumb" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
-          <td class="col-campaign" style="color:#2b6cb0;" title="${r.cp}">${r.cp}</td>
-          <td class="col-adgroup" style="color:#c05621;" title="${r.gr}">${r.gr}</td>
-          <td class="col-product" title="${r.pName}"><b>${r.pName}</b>${r.isG?'<span class="badge-group">그룹</span>':''}</td>
+      document.getElementById('tableBody').innerHTML = aggList.map(r => {
+        const safeMat = r.mat.replace(/'/g, "\\'");
+        const escapedCp = escapeHtml(r.cp);
+        const escapedGr = escapeHtml(r.gr);
+        const escapedPName = escapeHtml(r.pName);
+        return `
+        <tr onclick="viewDetail('${safeMat}')" style="cursor:pointer;">
+          <td><img src="${escapeHtml(r.pImg)}" class="img-thumb" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23ddd%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'"></td>
+          <td class="col-campaign" style="color:#2b6cb0;" title="${escapedCp}">${escapedCp}</td>
+          <td class="col-adgroup" style="color:#c05621;" title="${escapedGr}">${escapedGr}</td>
+          <td class="col-product" title="${escapedPName}"><b>${escapedPName}</b>${r.isG?'<span class="badge-group">그룹</span>':''}</td>
           <td>${r.cost.toLocaleString()}${getDiff(r.cost, r.pCost)}</td>
           <td>${r.view.toLocaleString()}${getDiff(r.view, r.pView)}</td>
           <td>${r.click.toLocaleString()}${getDiff(r.click, r.pClick)}</td>
@@ -563,7 +592,8 @@
           <td>${r.cv}${getDiff(r.cv, r.pCv)}</td>
           <td style="font-weight:bold">${r.amt.toLocaleString()}${getDiff(r.amt, r.pAmt)}</td>
           <td style="color:green; font-weight:bold;">${r.roas.toFixed(0)}%${getDiff(r.roas, r.pRoas)}</td>
-        </tr>`).join('');
+        </tr>`;
+      }).join('');
     }
 
     function resort(k) { 
@@ -575,7 +605,8 @@
     function viewDetail(mat) {
       activeMat = mat;
       document.getElementById('detailSection').style.display = 'block';
-      document.getElementById('detailTitle').innerText = `[전체 기간] ${pMap[mat]?.name || mat}`;
+      const displayName = pMap[mat]?.name || mat;
+      document.getElementById('detailTitle').textContent = `[전체 기간] ${displayName}`;
       
       let th = '';
       for(let k in metricNames) {
@@ -733,14 +764,7 @@
             data: weekValues,
             backgroundColor: weekColors,
             borderColor: '#fff',
-            borderWidth: 2,
-            datalabels: {
-              anchor: 'center',
-              align: 'center',
-              color: '#2c3e50',
-              font: { weight: 'bold', size: 13 },
-              formatter: (value) => formatValue(value)
-            }
+            borderWidth: 2
           }]
         },
         options: {
@@ -752,6 +776,13 @@
           },
           plugins: {
             legend: { display: false },
+            datalabels: {
+              anchor: 'center',
+              align: 'center',
+              color: '#2c3e50',
+              font: { weight: 'bold', size: 13 },
+              formatter: (value) => formatValue(value)
+            },
             tooltip: {
               backgroundColor: 'rgba(0,0,0,0.8)',
               padding: 12,
